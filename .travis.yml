@@ -1,5 +1,10 @@
 language:
   - cpp
+env:
+  global:
+   # The next declration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "YwdYHh5U9EtSUTm+QHvdbKBfE3l3fJkg915xhzRju+3w9a1PHutBtEM5cHf6B3tz7MfS+n2daUUY4IzA76hv0tJBBStnU0M6bf9zct9SUx+a82cV/KlOLN0kYaBRysRojFa5hjUL5tzmWl3hgAMA4zgZKv/QvW7Ts/A1/RI651I="
 
 compiler:
   - gcc
@@ -30,3 +35,13 @@ branches:
   except:
     - debian
     - engine-upgrade/sound
+
+addons:
+  coverity_scan:
+    project:
+      name: "Unvanquished/Unvanquished"
+      description: "Daemon Engine!"
+    notification_email: vcelestialragev@gmail.com
+    build_command_prepend: "mkdir build;cd build;CXXFLAGS=\"-D__extern_always_inline=inline\" cmake -DCMAKE_BUILD_TYPE=Debug -DUSE_SDL2=OFF .."
+    build_command: "cmake --build ."
+    branch_pattern: coverity_scan
