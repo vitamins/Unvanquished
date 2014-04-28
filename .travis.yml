@@ -13,6 +13,7 @@ script:
 
 notifications:
   irc: "irc.freenode.org#unvanquished-dev"
+  irc: "irc.quakenet.org#unvanquished"
   on_success: change
   on_failure: always
 

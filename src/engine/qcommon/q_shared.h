@@ -41,7 +41,7 @@ Maryland 20850 USA.
 #define PRODUCT_NAME            "Unvanquished"
 #define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
-#define PRODUCT_VERSION         "0.25.0"
+#define PRODUCT_VERSION         "0.26.0"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          PRODUCT_VERSION
@@ -64,24 +64,12 @@ Maryland 20850 USA.
 
 #define AUTOEXEC_NAME           "autoexec.cfg"
 
-#ifndef DEDICATED
+#ifndef BUILD_SERVER
 #define CONFIG_NAME             "autogen.cfg"
 #define KEYBINDINGS_NAME        "keybindings.cfg"
 #define TEAMCONFIG_NAME         "teamconfig.cfg"
 #else
 #define CONFIG_NAME             "autogen_server.cfg"
-#endif
-
-#if 1
-#if !defined( COMPAT_Q3A )
-#define COMPAT_Q3A 1
-#endif
-#endif
-
-#if 1
-#if !defined( COMPAT_ET )
-#define COMPAT_ET 1
-#endif
 #endif
 
 #define UNNAMED_PLAYER "UnnamedPlayer"
@@ -313,7 +301,7 @@ typedef int clipHandle_t;
     // We disable compiler warnings when using -Wpedantic for this specific case.
 #ifdef __GNUC__
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-pedantic"
 #endif
 	typedef ALIGNED( 16, union transform_u {
 		struct {
@@ -2421,7 +2409,7 @@ void         ByteToDir( int b, vec3_t dir );
 
 		ET_MISSILE,
 		ET_MOVER,
-		ET_BEAM,
+		ET_UNUSED,
 		ET_PORTAL,
 		ET_SPEAKER,
 		ET_PUSHER,
@@ -2463,6 +2451,9 @@ void         ByteToDir( int b, vec3_t dir );
 
 		int          otherEntityNum; // shotgun sources, etc
 		int          otherEntityNum2;
+
+// FIXME: separate field, but doing this for compat reasons
+#define otherEntityNum3 groundEntityNum
 
 		int          groundEntityNum; // ENTITYNUM_NONE = in air
 
