@@ -5,6 +5,10 @@ compiler:
   - gcc
   - clang
 
+install:
+  - brew update
+  - brew install cmake
+
 script:
   - mkdir build
   - cd build
