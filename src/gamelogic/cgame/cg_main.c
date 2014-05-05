@@ -707,8 +707,6 @@ these will change when following another player
 */
 static void CG_SetUIVars( void )
 {
-	playerState_t *ps;
-
 	if ( !cg.snap )
 	{
 		return;
@@ -1507,6 +1505,7 @@ static void CG_RegisterGraphics( void )
 
 	cgs.media.alienEvolvePS = CG_RegisterParticleSystem( "alienEvolvePS" );
 	cgs.media.alienAcidTubePS = CG_RegisterParticleSystem( "alienAcidTubePS" );
+	cgs.media.alienBoosterPS = CG_RegisterParticleSystem( "alienBoosterPS" );
 
 	cgs.media.jetPackThrustPS = CG_RegisterParticleSystem( "jetPackAscendPS" );
 
@@ -1703,9 +1702,25 @@ static void CG_RegisterClients( void )
 		cgs.media.larmourTorsoSkin = trap_R_RegisterSkin( "models/players/human_base/body_helmetlarmour.skin" );
 	}
 
-	cgs.media.jetpackModel = trap_R_RegisterModel( "models/players/human_base/jetpack.md3" );
+	cgs.media.jetpackModel = trap_R_RegisterModel( "models/players/human_base/jetpack.iqm" );
 	cgs.media.jetpackFlashModel = trap_R_RegisterModel( "models/players/human_base/jetpack_flash.md3" );
-	cgs.media.battpackModel = trap_R_RegisterModel( "models/players/human_base/battpack.md3" );
+	cgs.media.radarModel = trap_R_RegisterModel( "models/players/human_base/battpack.md3" ); // HACK: Use old battpack
+
+	CG_RegisterWeaponAnimation(
+	    &cgs.media.jetpackAnims[ JANIM_NONE ],
+	    "models/players/human_base/jetpack.iqm:idle",
+	    qfalse, qfalse, qfalse );
+
+
+	CG_RegisterWeaponAnimation(
+	    &cgs.media.jetpackAnims[ JANIM_SLIDEOUT ],
+	    "models/players/human_base/jetpack.iqm:slideout",
+	    qfalse, qfalse, qfalse );
+
+	CG_RegisterWeaponAnimation(
+	    &cgs.media.jetpackAnims[ JANIM_SLIDEIN ],
+	    "models/players/human_base/jetpack.iqm:slidein",
+	    qfalse, qfalse, qfalse );
 
 	cg.charModelFraction = 1.0f;
 	trap_UpdateScreen();

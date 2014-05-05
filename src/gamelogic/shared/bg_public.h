@@ -288,16 +288,17 @@ typedef enum
   IBE_NOALIENBP,        // not enough build points (aliens)
   IBE_NOCREEP,          // no creep in this area
 
-  IBE_NOREACTOR,        // no reactor present
+  IBE_NOREACTOR,        // not enough power in this area and no reactor present
   IBE_ONEREACTOR,       // may not build two reactors
   IBE_NOHUMANBP,        // not enough build points (humans)
-  IBE_NOPOWERHERE,      // not enough power in this area
+  IBE_NOPOWERHERE,      // not enough power in this area even though a reactor is present
 
   IBE_NORMAL,           // surface is too steep
   IBE_NOROOM,           // no room
   IBE_SURFACE,          // map doesn't allow building on that surface
   IBE_DISABLED,         // building has been disabled for team
   IBE_LASTSPAWN,        // may not replace last spawn with non-spawn
+  IBE_MAINSTRUCTURE,    // may not replace main structure with other buildable
 
   IBE_MAXERRORS
 } itemBuildError_t;
@@ -422,8 +423,6 @@ typedef enum
   UP_BATTLESUIT,
 
   UP_RADAR,
-
-  UP_BATTPACK,
   UP_JETPACK,
 
   UP_GRENADE,
@@ -598,13 +597,13 @@ typedef enum
   EV_HUMAN_BUILDABLE_EXPLOSION,
   EV_ALIEN_BUILDABLE_EXPLOSION,
   EV_ALIEN_ACIDTUBE,
+  EV_ALIEN_BOOSTER,
 
   EV_MEDKIT_USED,
 
   EV_ALIEN_EVOLVE,
   EV_ALIEN_EVOLVE_FAILED,
 
-  EV_DEBUG_LINE,
   EV_STOPLOOPINGSOUND,
   EV_TAUNT,
 
@@ -674,6 +673,7 @@ typedef enum
   MN_B_NORMAL,
   MN_B_CANNOT,
   MN_B_LASTSPAWN,
+  MN_B_MAINSTRUCTURE,
   MN_B_DISABLED,
   MN_B_REVOKED,
   MN_B_SURRENDER,
@@ -1271,7 +1271,7 @@ typedef struct
 qboolean BG_GetTrajectoryPitch( vec3_t origin, vec3_t target, float v0, float g,
                                 vec2_t angles, vec3_t dir1, vec3_t dir2 );
 
-qboolean BG_WeaponIsFull( int weapon, int stats[], int ammo, int clips );
+qboolean BG_WeaponIsFull(int weapon, int ammo, int clips );
 qboolean BG_InventoryContainsWeapon( int weapon, int stats[] );
 int      BG_SlotsForInventory( int stats[] );
 void     BG_AddUpgradeToInventory( int item, int stats[] );
@@ -1374,13 +1374,13 @@ qboolean BG_ClassUnlocked( int class_ );
 unlockableType_t              BG_UnlockableType( int num );
 int                           BG_UnlockableTypeIndex( int num );
 momentumThresholdIterator_t BG_IterateMomentumThresholds( momentumThresholdIterator_t unlockableIter, team_t team, int *threshold, qboolean *unlocked );
-#ifdef IN_GAME_VM
+#ifdef BUILD_GAME
 void     G_UpdateUnlockables( void );
 #endif
-#ifdef IN_CGAME_VM
+#ifdef BUILD_CGAME
 void     CG_UpdateUnlockables( playerState_t *ps );
 #endif
-#ifdef UI
+#ifdef BUILD_UI
 void     UI_UpdateUnlockables( void );
 #endif
 
@@ -1451,7 +1451,7 @@ typedef enum
 
 typedef struct voiceTrack_s
 {
-#ifdef IN_CGAME_VM
+#ifdef BUILD_CGAME
 	sfxHandle_t         track;
 	int                 duration;
 #endif
