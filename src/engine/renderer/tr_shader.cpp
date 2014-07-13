@@ -5656,7 +5656,14 @@ shader_t       *R_FindShader( const char *name, shaderType_t type,
 	// ydnar: default to no implicit mappings
 	implicitMap[ 0 ] = '\0';
 	implicitStateBits = GLS_DEFAULT;
-	implicitCullType = CT_FRONT_SIDED;
+	if( shader.type == SHADER_2D )
+	{
+		implicitCullType = CT_TWO_SIDED;
+	}
+	else
+	{
+		implicitCullType = CT_FRONT_SIDED;
+	}
 
 	// attempt to define shader from an explicit parameter file
 	shaderText = FindShaderInShaderText( strippedName );
@@ -5822,6 +5829,7 @@ qhandle_t RE_RegisterShaderFromImage( const char *name, image_t *image )
 	Com_Memset( &stages, 0, sizeof( stages ) );
 	Q_strncpyz( shader.name, name, sizeof( shader.name ) );
 	shader.type = SHADER_2D;
+	shader.cullType = CT_TWO_SIDED;
 
 	for ( i = 0; i < MAX_SHADER_STAGES; i++ )
 	{
@@ -6125,14 +6133,18 @@ void R_ShaderExp_f( void )
 
 	ri.Printf( PRINT_ALL, "-----------------------\n" );
 
-	for ( i = 1; i < ri.Cmd_Argc(); i++ )
-	{
-		strncat( buffer, ri.Cmd_Argv( i ), sizeof( buffer ) - 1 );
-		strncat( buffer, " ", sizeof( buffer ) - 1 );
-	}
+	len = sizeof( buffer );
 
-	len = strlen( buffer );
-	buffer[ len - 1 ] = 0; // replace last " " with tailing zero
+	for ( i = 1; i < ri.Cmd_Argc() && len > 0; i++ )
+	{
+		if ( i > 1 )
+		{
+			strncat( buffer, " ", len-- );
+		}
+
+		strncat( buffer, ri.Cmd_Argv( i ), len );
+		len -= strlen( ri.Cmd_Argv( i ) );
+	}
 
 	ParseExpression( &buffer_p, &exp );
 
@@ -6802,4 +6814,15 @@ void R_SetAltShaderTokens( const char *list )
 	{
 		*p = 0;
 	}
+}
+
+/*
+==================
+RE_GetShaderNameFromHandle
+==================
+*/
+
+const char *RE_GetShaderNameFromHandle( qhandle_t shader )
+{
+	return R_GetShaderByHandle( shader )->name;
 }

@@ -441,12 +441,6 @@ int BG_ClassCanEvolveFromTo( int from, int to, int credits )
 	fromCost = BG_Class( from )->cost;
 	toCost = BG_Class( to )->cost;
 
-	// don't allow devolving
-	if ( toCost < fromCost )
-	{
-		return -1;
-	}
-
 	// classes w/o a cost are for spawning only
 	if ( toCost == 0 )
 	{
@@ -460,8 +454,13 @@ int BG_ClassCanEvolveFromTo( int from, int to, int credits )
 		return -1;
 	}
 
-	// evolving between classes of euqal cost costs one evo
-	evolveCost = MAX( toCost - fromCost, CREDITS_PER_EVO );
+	// don't allow devolving
+	if ( toCost <= fromCost )
+	{
+		return -1;
+	}
+
+	evolveCost = toCost - fromCost;
 
 	if ( credits < evolveCost )
 	{
@@ -1255,8 +1254,6 @@ static const char *const eventnames[] =
   "EV_AMMO_REFILL",     // ammo for clipless weapon has been refilled
   "EV_CLIPS_REFILL",    // weapon clips have been refilled
   "EV_FUEL_REFILL",     // jetpack fuel has been refilled
-
-  "EV_LEV2_ZAP",
 
   "EV_HIT", // notify client of a hit
 

@@ -28,11 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ===========================================================================
 */
 
-#include "IPC.h"
-#include "Command.h"
-#include "Log.h"
-#include "FileSystem.h"
-
 #ifndef COMMON_COMMON_SYSCALLS_H_
 #define COMMON_COMMON_SYSCALLS_H_
 
@@ -133,18 +128,19 @@ namespace VM {
         FS_HOMEPATH_LISTFILES,
         FS_HOMEPATH_LISTFILESRECURSIVE,
         FS_PAKPATH_OPEN,
-        FS_PAKPATH_TIMESTAMP
+        FS_PAKPATH_TIMESTAMP,
+        FS_PAKPATH_LOADPAK
     };
 
     // FSInitializeMsg
     typedef IPC::SyncMessage<
         IPC::Message<IPC::Id<FILESYSTEM, FS_INITIALIZE>>,
-        IPC::Reply<std::string, std::string, std::vector<FS::PakInfo>, std::vector<FS::PakInfo>, std::unordered_map<std::string, std::pair<uint32_t, FS::offset_t>>>
+        IPC::Reply<std::string, std::string, std::vector<FS::PakInfo>, std::vector<FS::LoadedPakInfo>, std::unordered_map<std::string, std::pair<uint32_t, FS::offset_t>>>
     > FSInitializeMsg;
     // FSHomePathOpenModeMsg
     typedef IPC::SyncMessage<
         IPC::Message<IPC::Id<FILESYSTEM, FS_HOMEPATH_OPENMODE>, std::string, uint32_t>,
-        IPC::Reply<IPC::FileHandle>
+        IPC::Reply<Util::optional<IPC::FileHandle>>
     > FSHomePathOpenModeMsg;
     // FSHomePathFileExistsMsg
     typedef IPC::SyncMessage<
@@ -179,13 +175,18 @@ namespace VM {
     // FSPakPathOpenMsg
     typedef IPC::SyncMessage<
         IPC::Message<IPC::Id<FILESYSTEM, FS_PAKPATH_OPEN>, uint32_t, std::string>,
-        IPC::Reply<IPC::FileHandle>
+        IPC::Reply<Util::optional<IPC::FileHandle>>
     > FSPakPathOpenMsg;
     // FSPakPathTimestampMsg
     typedef IPC::SyncMessage<
         IPC::Message<IPC::Id<FILESYSTEM, FS_PAKPATH_TIMESTAMP>, uint32_t, std::string>,
         IPC::Reply<Util::optional<uint64_t>>
     > FSPakPathTimestampMsg;
+    // FSPakPathLoadPakMsg
+    typedef IPC::SyncMessage<
+        IPC::Message<IPC::Id<FILESYSTEM, FS_PAKPATH_LOADPAK>, uint32_t, Util::optional<uint32_t>, std::string>,
+        IPC::Reply<>
+    > FSPakPathLoadPakMsg;
 
 }
 
