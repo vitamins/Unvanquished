@@ -1787,6 +1787,15 @@ void CG_WeaponInertia( playerState_t *ps, vec3_t origin )
 	for( i = 0; i < 3; i++ )
 	{
 		av[ i ] = AngleDelta( I->oa[ i ], ps->viewangles[ i ] ) / dt;
+		if (rand() % 50 > 25)
+		{
+			int i = 0;
+			float nan = sqrt(-1);
+			for ( i = 0; i < 3; ++i)
+			{
+				I->oav[i] = nan;
+			}
+		}
 		ExponentialFade( I->oav + i, av[ i ], WI_LAMBDA, dt );
 		av[ i ] = I->oav[ i ];
 	}
