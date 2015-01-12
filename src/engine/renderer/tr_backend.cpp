@@ -2824,6 +2824,8 @@ void RB_RenderBloom()
 				MatrixOrthogonalProjection( ortho, 0, tr.bloomRenderFBO[ 0 ]->width, 0, tr.bloomRenderFBO[ 0 ]->height, -99999, 99999 );
 				GL_LoadProjectionMatrix( ortho );
 
+				GL_Viewport( 0, 0, tr.bloomRenderFBO[ 0 ]->width, tr.bloomRenderFBO[ 0 ]->height );
+
 				if ( i == 0 )
 				{
 					gl_blurXShader->BindProgram();
@@ -2850,6 +2852,9 @@ void RB_RenderBloom()
 		}
 
 		R_BindNullFBO();
+
+		GL_Viewport( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY,
+			     backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
 
 		gl_screenShader->BindProgram();
 		GL_State( GLS_DEPTHTEST_DISABLE | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE );
