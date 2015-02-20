@@ -952,7 +952,7 @@ void SetPlaneSignbits( cplane_t *out )
  * ==================
  */
 
-int BoxOnPlaneSide( vec3_t emins, vec3_t emaxs, struct cplane_s *p )
+int BoxOnPlaneSide( const vec3_t emins, const vec3_t emaxs, const struct cplane_s *p )
 {
 	float dist[ 2 ];
 	int   sides, b, i;
@@ -1168,6 +1168,18 @@ qboolean BoundsIntersectPoint( const vec3_t mins, const vec3_t maxs, const vec3_
 	}
 
 	return qtrue;
+}
+
+float BoundsMaxExtent( const vec3_t mins, const vec3_t maxs ) {
+	float result = Q_fabs( mins[0] );
+
+	result = MAX( result, Q_fabs( mins[ 1 ] ) );
+	result = MAX( result, Q_fabs( mins[ 2 ] ) );
+	result = MAX( result, Q_fabs( maxs[ 0 ] ) );
+	result = MAX( result, Q_fabs( maxs[ 1 ] ) );
+	result = MAX( result, Q_fabs( maxs[ 2 ] ) );
+
+	return result;
 }
 
 int VectorCompare( const vec3_t v1, const vec3_t v2 )
@@ -3838,7 +3850,7 @@ void TransCombine( const transform_t *a, const transform_t *b,
 void TransInverse( const transform_t *in, transform_t *out )
 {
 	quat_t inverse;
-	transform_t tmp;
+	static transform_t tmp; // static for proper alignment in QVMs
 
 	TransInit( &tmp );
 	VectorNegate( in->trans, tmp.trans );

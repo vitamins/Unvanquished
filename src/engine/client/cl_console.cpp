@@ -39,9 +39,12 @@ Maryland 20850 USA.
 #include "../qcommon/q_unicode.h"
 #include "../framework/LogSystem.h"
 
-int g_console_field_width = 78;
 
 #define CONSOLE_COLOR COLOR_WHITE //COLOR_BLACK
+#define DEFAULT_CONSOLE_WIDTH 78
+#define MAX_CONSOLE_WIDTH   1024
+
+int g_console_field_width = DEFAULT_CONSOLE_WIDTH;
 
 console_t consoleState;
 
@@ -85,9 +88,6 @@ cvar_t    *con_debug;
 #define ANIMATION_TYPE_SCROLL_DOWN 1
 #define ANIMATION_TYPE_FADE   2
 #define ANIMATION_TYPE_BOTH   3
-
-#define DEFAULT_CONSOLE_WIDTH 78
-#define MAX_CONSOLE_WIDTH   1024
 
 #define CON_LINE(line) ( ( (line) % consoleState.maxScrollbackLengthInLines ) * consoleState.textWidthInChars )
 
@@ -234,7 +234,7 @@ void Con_Dump_f( void )
 
 	if ( l > 2 )
 	{
-		Cmd_PrintUsage(_("[<filename>]"), NULL);
+		Cmd_PrintUsage("[<filename>]", NULL);
 		return;
 	}
 
@@ -253,11 +253,11 @@ void Con_Dump_f( void )
 
 	if ( !f )
 	{
-		Com_Log(LOG_ERROR, _( "couldn't open." ));
+		Com_Log(LOG_ERROR, "couldn't open." );
 		return;
 	}
 
-	Com_Printf(_( "Dumped console text to %s.\n"), name );
+	Com_Printf( "Dumped console text to %s.\n", name );
 
 	// skip empty lines
 	for ( l = consoleState.currentLine - consoleState.maxScrollbackLengthInLines + 1; l <= consoleState.currentLine; l++ )
@@ -293,7 +293,7 @@ void Con_Search_f( void )
 
 	if ( c < 2 )
 	{
-		Cmd_PrintUsage(_("<string>…"), NULL);
+		Cmd_PrintUsage("<string>…", NULL);
 		return;
 	}
 
@@ -338,7 +338,7 @@ void Con_Grep_f( void )
 
 	if ( Cmd_Argc() != 2 )
 	{
-		Cmd_PrintUsage(_("<string>"), NULL);
+		Cmd_PrintUsage("<string>", NULL);
 		return;
 	}
 
@@ -444,35 +444,26 @@ qboolean Con_CheckResize( void )
 		consoleState.textWidthInChars = textWidthInChars;
 		oldtotallines = consoleState.maxScrollbackLengthInLines;
 		consoleState.maxScrollbackLengthInLines = CON_TEXTSIZE / consoleState.textWidthInChars;
-		numlines = oldwidth < 0 ? 0 : oldtotallines;
 
-		if ( consoleState.maxScrollbackLengthInLines < numlines )
-		{
-			numlines = consoleState.maxScrollbackLengthInLines;
+		if ( oldtotallines > 0 && oldwidth > 0 && consoleState.usedScrollbackLengthInLines > 0 ) {
+
+			numlines = std::min( {consoleState.maxScrollbackLengthInLines, consoleState.usedScrollbackLengthInLines, oldtotallines} );
+			numchars = std::min( oldwidth, consoleState.textWidthInChars );
+
+			Com_Memcpy( buf, consoleState.text, sizeof( consoleState.text ) );
+			Con_Clear();
+
+			for ( i = 0; i < numlines; i++ ) {
+				conChar_t* destination = consoleState.text + ( consoleState.maxScrollbackLengthInLines - 1 - i ) * consoleState.textWidthInChars;
+				memcpy( destination,
+				    buf + ( ( consoleState.currentLine - i - 1 + oldtotallines ) % oldtotallines ) * oldwidth,
+				    numchars * sizeof( conChar_t ) );
+			}
+			consoleState.usedScrollbackLengthInLines = numlines;
+		} else {
+			Con_Clear();
 		}
-
-		numchars = oldwidth;
-
-		if ( consoleState.textWidthInChars < numchars )
-		{
-			numchars = consoleState.textWidthInChars;
-		}
-
-		Com_Memcpy( buf, consoleState.text, sizeof( consoleState.text ) );
-		Con_Clear();
-
-		for ( i = 0; i < numlines; i++ )
-		{
-			conChar_t* destination = consoleState.text + ( consoleState.maxScrollbackLengthInLines - 1 - i ) * consoleState.textWidthInChars;
-			memcpy( destination,
-			        buf + ( ( consoleState.currentLine - i + oldtotallines ) % oldtotallines ) * oldwidth,
-			        numchars * sizeof( conChar_t ) );
-
-			if( destination[0].ch )
-				consoleState.usedScrollbackLengthInLines++;
-		}
-
-		consoleState.currentLine = consoleState.maxScrollbackLengthInLines - 1;
+		consoleState.currentLine = consoleState.maxScrollbackLengthInLines;
 		consoleState.bottomDisplayedLine = consoleState.currentLine;
 		consoleState.scrollLineIndex = consoleState.currentLine;
 	}
@@ -483,8 +474,8 @@ qboolean Con_CheckResize( void )
 
 		Q_strncpyz( prompt, con_prompt->string, sizeof( prompt ) );
 		Q_CleanStr( prompt );
-
-		g_console_field_width = consoleState.textWidthInChars - 8 - Q_UTF8_Strlen( prompt );
+		// 8 spaces for clock, 1 for cursor
+		g_console_field_width = consoleState.textWidthInChars - 9 - Q_UTF8_Strlen( prompt );
 		g_consoleField.SetWidth(g_console_field_width);
 	}
 
@@ -591,8 +582,9 @@ If no console is visible, the text will appear at the top of the game window
 qboolean CL_InternalConsolePrint( const char *text )
 {
 	int      y;
-	int      c, i, l;
+	int      c, i;
 	int      color;
+	int      wordLen = 0;
 
 	// for some demos we don't want to ever show anything on the console
 	if ( cl_noprint && cl_noprint->integer )
@@ -620,9 +612,7 @@ qboolean CL_InternalConsolePrint( const char *text )
 	{
 		// feed the text to cgame
 		Cmd_SaveCmdContext();
-		Cmd_TokenizeString( Cmd::Escape(text).c_str() );
-		Rocket_AddConsoleText();
-		Cmd_RestoreCmdContext();
+		Rocket_AddConsoleText(text);
 	}
 
 	color = ColorIndex( CONSOLE_COLOR );
@@ -636,26 +626,34 @@ qboolean CL_InternalConsolePrint( const char *text )
 			continue;
 		}
 
-		// count word length
-		for ( i = l = 0; l < consoleState.textWidthInChars; ++l )
+		if ( !wordLen )
 		{
-			if ( text[ i ] <= ' ' && text[ i ] >= 0 )
+			// count word length
+			for ( i = 0; ; ++wordLen )
 			{
-				break;
+				if ( text[ i ] <= ' ' && text[ i ] >= 0 )
+				{
+					break;
+				}
+				if ( Q_IsColorString( text + i ) )
+				{
+					i += 2;
+					continue;
+				}
+				if ( text[ i ] == Q_COLOR_ESCAPE && text[ i + 1 ] == Q_COLOR_ESCAPE )
+				{
+					++i;
+				}
+
+				i += Q_UTF8_Width( text + i );
 			}
 
-			if ( text[ i ] == Q_COLOR_ESCAPE && text[ i + 1 ] == Q_COLOR_ESCAPE )
+			// word wrap
+			if ( consoleState.horizontalCharOffset + wordLen >= consoleState.textWidthInChars
+			       && consoleState.horizontalCharOffset > 0 )
 			{
-				++i;
+				Con_Linefeed();
 			}
-
-			i += Q_UTF8_Width( text + i );
-		}
-
-		// word wrap
-		if ( l != consoleState.textWidthInChars && ( consoleState.horizontalCharOffset + l >= consoleState.textWidthInChars ) )
-		{
-			Con_Linefeed( );
 		}
 
 		switch ( c )
@@ -682,11 +680,14 @@ qboolean CL_InternalConsolePrint( const char *text )
 				consoleState.text[ y * consoleState.textWidthInChars + consoleState.horizontalCharOffset ].ch = Q_UTF8_CodePoint( text );
 				consoleState.text[ y * consoleState.textWidthInChars + consoleState.horizontalCharOffset ].ink = color;
 				++consoleState.horizontalCharOffset;
+				if ( wordLen > 0 )
+				{
+					--wordLen;
+				}
 
 				if ( consoleState.horizontalCharOffset >= consoleState.textWidthInChars )
 				{
-					Con_Linefeed( );
-					consoleState.horizontalCharOffset = 0;
+					Con_Linefeed();
 				}
 
 				break;
@@ -1264,7 +1265,7 @@ void Con_RunAnimatedConsole( void )
 /*
 ==================
 Con_DrawConsole
-runs each render-frame (possibly twice with stereo enabled)
+runs each render-frame
 ==================
 */
 void Con_DrawConsole( void )
@@ -1381,15 +1382,11 @@ class GraphicalTarget : public Log::Target {
 				return false;
 			}
 
-			if (com_dedicated && !com_dedicated->integer) {
-				for (Log::Event event : events) {
-					CL_ConsolePrint(std::move(event.text));
-					CL_ConsolePrint("\n");
-				}
-				return true;
-			} else {
-				return false;
+			for (Log::Event event : events) {
+				CL_ConsolePrint(std::move(event.text));
+				CL_ConsolePrint("\n");
 			}
+			return true;
 		}
 };
 

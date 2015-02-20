@@ -202,20 +202,8 @@ static const g_admin_cmd_t     g_admin_cmds[] =
 	},
 
 	{
-		"listmaps",     0,                   qtrue,  NULL,
-		N_("display a list of available maps on the server"),
-		N_("(^5mapname^7)")
-	},
-
-	{
 		"listplayers",  G_admin_listplayers, qtrue,  "listplayers",
 		N_("display a list of players, their client numbers and their levels"),
-		""
-	},
-
-	{
-		"listrotation", 0,                   qtrue,  NULL,
-		N_("display the active map rotation"),
 		""
 	},
 
@@ -811,7 +799,7 @@ void G_admin_writeconfig( void )
 		return;
 	}
 
-	t = trap_GMTime( NULL );
+	t = Com_GMTime( NULL );
 
 	if ( trap_FS_FOpenFile( g_admin.string, &f, FS_WRITE_VIA_TEMPORARY ) < 0 )
 	{
@@ -1469,7 +1457,7 @@ static void G_admin_ban_message(
 	{
 		char  duration[ MAX_DURATION_LENGTH ];
 		char  time[ MAX_DURATION_LENGTH ];
-		G_admin_duration( ban->expires - trap_GMTime( NULL ), time, sizeof( time ), duration,
+		G_admin_duration( ban->expires - Com_GMTime( NULL ), time, sizeof( time ), duration,
 		                  sizeof( duration ) );
 		// part of this might get cut off on the connect screen
 		Com_sprintf( creason, clen,
@@ -1503,7 +1491,7 @@ static g_admin_ban_t *G_admin_match_ban( gentity_t *ent, const g_admin_ban_t *st
 	int           t;
 	g_admin_ban_t *ban;
 
-	t = trap_GMTime( NULL );
+	t = Com_GMTime( NULL );
 
 	if ( ent->client->pers.localClient )
 	{
@@ -1635,7 +1623,7 @@ qboolean G_admin_cmd_check( gentity_t *ent )
 				return qtrue;
 			}
 
-			trap_SendConsoleCommand( EXEC_APPEND, c->exec );
+			trap_SendConsoleCommand( c->exec );
 		}
 		else
 		{
@@ -2126,7 +2114,7 @@ qboolean G_admin_time( gentity_t *ent )
 	switch ( trap_Argc() )
 	{
 	case 1:
-		trap_GMTime( &qt );
+		Com_GMTime( &qt );
 
 		gameMinutes = level.matchTime/1000 / 60;
 		gameSeconds = level.matchTime/1000 % 60;
@@ -2265,7 +2253,7 @@ qboolean G_admin_setlevel( gentity_t *ent )
 
 		vic->client->pers.admin = a;
 		Q_strncpyz( a->guid, vic->client->pers.guid, sizeof( a->guid ) );
-		trap_GMTime( &a->lastSeen ); // player is connected...
+		Com_GMTime( &a->lastSeen ); // player is connected...
 	}
 
 	if ( !a )
@@ -2315,7 +2303,7 @@ static g_admin_ban_t *admin_create_ban_entry( gentity_t *ent, char *netname, cha
 	int           id = 1;
 	int           expired = 0;
 
-	t = trap_GMTime( &qt );
+	t = Com_GMTime( &qt );
 
 	for ( b = g_admin_bans; b; b = b->next )
 	{
@@ -2753,7 +2741,7 @@ qboolean G_admin_ban( gentity_t *ent )
 qboolean G_admin_unban( gentity_t *ent )
 {
 	int           bnum;
-	int           time = trap_GMTime( NULL );
+	int           time = Com_GMTime( NULL );
 	char          bs[ 5 ];
 	g_admin_ban_t *ban, *p;
 	qboolean      expireOnly;
@@ -2840,7 +2828,7 @@ qboolean G_admin_adjustban( gentity_t *ent )
 	int           bnum;
 	int           length, maximum;
 	int           expires;
-	int           time = trap_GMTime( NULL );
+	int           time = Com_GMTime( NULL );
 	char          duration[ MAX_DURATION_LENGTH ] = { "" };
 	char          seconds[ MAX_DURATION_LENGTH ];
 	char          *reason;
@@ -3130,7 +3118,7 @@ qboolean G_admin_speclock( gentity_t *ent )
 	if ( lockTime )
 	{
 		G_admin_duration( lockTime, time, sizeof( time ), duration, sizeof( duration ) );
-		spec->expires = trap_GMTime( NULL ) + lockTime;
+		spec->expires = Com_GMTime( NULL ) + lockTime;
 	}
 	else
 	{
@@ -3244,7 +3232,7 @@ qboolean G_admin_changemap( gentity_t *ent )
 	admin_log( map );
 	admin_log( layout );
 
-	trap_SendConsoleCommand( EXEC_APPEND, va( "map %s %s", Quote( map ), Quote( layout ) ) );
+	trap_SendConsoleCommand( va( "map %s %s", Quote( map ), Quote( layout ) ) );
 
 	level.restarted = qtrue;
 	G_MapLog_Result( 'M' );
@@ -3525,7 +3513,7 @@ qboolean G_admin_listinactive( gentity_t *ent )
 	}
 
 	trap_Argv( 1, s, sizeof( s ) );
-	trap_GMTime( &tm );
+	Com_GMTime( &tm );
 
 	months = atoi( s );
 	months = months < 1 ? 1 : months; // minimum of 1 month
@@ -3830,7 +3818,7 @@ static int ban_out( void *ban, char *str )
 		return b->id;
 	}
 
-	t = trap_GMTime( NULL );
+	t = Com_GMTime( NULL );
 
 	for ( i = 0; b->name[ i ]; i++ )
 	{
@@ -4385,7 +4373,7 @@ qboolean G_admin_restart( gentity_t *ent )
 		trap_Cvar_Set( "g_lockTeamsAtStart", "1" );
 	}
 
-	trap_SendConsoleCommand( EXEC_APPEND, "map_restart" );
+	trap_SendConsoleCommand( "map_restart" );
 	G_MapLog_Result( 'R' );
 
 	AP( va( "print_tr %s %s %s %s %s %s %s %s", QQ( N_("^3restart: ^7map restarted by $1$ $2$$3t$$4$$5$$6t$$7$\n") ),
@@ -5061,7 +5049,7 @@ qboolean G_admin_builder( gentity_t *ent )
 
 	VectorMA( start, 1000, forward, end );
 
-	trap_Trace( &tr, start, NULL, NULL, end, ent->s.number, MASK_PLAYERSOLID );
+	trap_Trace( &tr, start, NULL, NULL, end, ent->s.number, MASK_PLAYERSOLID, 0 );
 	traceEnt = &g_entities[ tr.entityNum ];
 
 	if ( tr.fraction < 1.0f && ( traceEnt->s.eType == ET_BUILDABLE ) )
@@ -5412,7 +5400,7 @@ qboolean G_admin_l0( gentity_t *ent )
 		return qfalse;
 	}
 
-	trap_SendConsoleCommand( EXEC_APPEND, va( "setlevel %d 0;", id ) );
+	trap_SendConsoleCommand( va( "setlevel %d 0;", id ) );
 
 	AP( va( "print_tr %s %s %s", QQ( N_("^3l0: ^7name protection for $1$^7 removed by $2$\n") ),
 	        G_quoted_user_name( vic, a->name ),
@@ -5454,7 +5442,7 @@ qboolean G_admin_l1( gentity_t *ent )
 		return qfalse;
 	}
 
-	trap_SendConsoleCommand( EXEC_APPEND, va( "setlevel %d 1;", id ) );
+	trap_SendConsoleCommand( va( "setlevel %d 1;", id ) );
 
 	AP( va( "print_tr %s %s %s", QQ( N_("^3l1: ^7name protection for $1$^7 enabled by $2$\n") ),
 	        G_quoted_user_name( vic, a->name ),
@@ -5482,7 +5470,7 @@ qboolean G_admin_register( gentity_t *ent )
 		return qfalse;
 	}
 
-	trap_SendConsoleCommand( EXEC_APPEND, va( "setlevel %d %d;",
+	trap_SendConsoleCommand( va( "setlevel %d %d;",
 	                         ( int )( ent - g_entities ),
 	                         level ) );
 
@@ -5505,7 +5493,7 @@ qboolean G_admin_unregister( gentity_t *ent )
 		return qfalse;
 	}
 
-	trap_SendConsoleCommand( EXEC_APPEND, va( "setlevel %d 0;",
+	trap_SendConsoleCommand( va( "setlevel %d 0;",
 	                         ( int )( ent - g_entities ) ) );
 
 	AP( va( "print_tr %s %s", QQ( N_("^3unregister: ^7$1$^7 is now an unprotected name\n") ),

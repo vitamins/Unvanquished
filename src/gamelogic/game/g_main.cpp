@@ -61,7 +61,6 @@ vmCvar_t           g_password;
 vmCvar_t           g_needpass;
 vmCvar_t           g_maxclients;
 vmCvar_t           g_maxGameClients;
-vmCvar_t           g_dedicated;
 vmCvar_t           g_speed;
 vmCvar_t           g_gravity;
 vmCvar_t           g_cheats;
@@ -109,6 +108,7 @@ vmCvar_t           g_initialBuildPoints;
 vmCvar_t           g_initialMineRate;
 vmCvar_t           g_mineRateHalfLife;
 vmCvar_t           g_minimumMineRate;
+vmCvar_t           g_buildPointLossFraction;
 
 vmCvar_t           g_debugMomentum;
 vmCvar_t           g_momentumHalfLife;
@@ -250,9 +250,7 @@ static cvarTable_t gameCvarTable[] =
 	{ NULL,                           "B",                             "",                                 CVAR_SERVERINFO,                                 0, qfalse           },
 	{ NULL,                           "g_mapStartupMessage",           "",                                 0,                                               0, qfalse           },
 	{ NULL,                           "g_mapConfigsLoaded",            "0",                                0,                                               0, qfalse           },
-	{ &g_dedicated,                   "dedicated",                     "0",                                0,                                               0, qfalse           },
 	{ &g_maxclients,                  "sv_maxclients",                 "24",                               CVAR_SERVERINFO | CVAR_LATCH,                    0, qfalse           },
-	{ &g_cheats,                      "sv_cheats",                     "",                                 0,                                               0, qfalse           },
 	{ &g_mapRestarted,                "g_mapRestarted",                "0",                                0,                                               0, qfalse           },
 	{ &g_lockTeamsAtStart,            "g_lockTeamsAtStart",            "0",                                0,                                               0, qfalse           },
 	{ &g_tag,                         "g_tag",                         "unv",                              CVAR_INIT,                                       0, qfalse           },
@@ -268,10 +266,10 @@ static cvarTable_t gameCvarTable[] =
 	// server: network related
 	{ &g_unlagged,                    "g_unlagged",                    "1",                                CVAR_SERVERINFO,                                 0, qtrue            },
 	{ &g_smoothClients,               "g_smoothClients",               "1",                                0,                                               0, qfalse           },
-	{ &g_synchronousClients,          "g_synchronousClients",          "0",                                CVAR_SYSTEMINFO,                                 0, qfalse           },
-	{ &pmove_fixed,                   "pmove_fixed",                   "0",                                CVAR_SYSTEMINFO,                                 0, qfalse           },
-	{ &pmove_msec,                    "pmove_msec",                    "8",                                CVAR_SYSTEMINFO,                                 0, qfalse           },
-	{ &pmove_accurate,                "pmove_accurate",                "1",                                CVAR_SYSTEMINFO,                                 0, qfalse           },
+	{ &g_synchronousClients,          "g_synchronousClients",          "0",                                0,                                               0, qfalse           },
+	{ &pmove_fixed,                   "pmove_fixed",                   "0",                                0,                                               0, qfalse           },
+	{ &pmove_msec,                    "pmove_msec",                    "8",                                0,                                               0, qfalse           },
+	{ &pmove_accurate,                "pmove_accurate",                "1",                                0,                                               0, qfalse           },
 	{ &g_floodMaxDemerits,            "g_floodMaxDemerits",            "5000",                             0,                                               0, qfalse           },
 	{ &g_floodMinTime,                "g_floodMinTime",                "2000",                             0,                                               0, qfalse           },
 
@@ -337,15 +335,15 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_layoutAuto,                  "g_layoutAuto",                  "0",                                0,                                               0, qfalse           },
 
 	// debug switches
-	{ &g_debugMove,                   "g_debugMove",                   "0",                                CVAR_TEMP,                                       0, qfalse           },
-	{ &g_debugDamage,                 "g_debugDamage",                 "0",                                CVAR_TEMP,                                       0, qfalse           },
-	{ &g_debugKnockback,              "g_debugKnockback",              "0",                                CVAR_TEMP,                                       0, qfalse           },
-	{ &g_debugTurrets,                "g_debugTurrets",                "0",                                CVAR_TEMP,                                       0, qfalse           },
-	{ &g_debugMomentum,               "g_debugMomentum",               "0",                                CVAR_TEMP,                                       0, qfalse           },
+	{ &g_debugMove,                   "g_debugMove",                   "0",                                0,                                               0, qfalse           },
+	{ &g_debugDamage,                 "g_debugDamage",                 "0",                                0,                                               0, qfalse           },
+	{ &g_debugKnockback,              "g_debugKnockback",              "0",                                0,                                               0, qfalse           },
+	{ &g_debugTurrets,                "g_debugTurrets",                "0",                                0,                                               0, qfalse           },
+	{ &g_debugMomentum,               "g_debugMomentum",               "0",                                0,                                               0, qfalse           },
 	{ &g_debugMapRotation,            "g_debugMapRotation",            "0",                                0,                                               0, qfalse           },
-	{ &g_debugVoices,                 "g_debugVoices",                 "0",                                CVAR_TEMP,                                       0, qfalse           },
-	{ &g_debugEntities,               "g_debugEntities",               "0",                                CVAR_TEMP,                                       0, qfalse           },
-	{ &g_debugFire,                   "g_debugFire",                   "0",                                CVAR_TEMP,                                       0, qfalse           },
+	{ &g_debugVoices,                 "g_debugVoices",                 "0",                                0,                                               0, qfalse           },
+	{ &g_debugEntities,               "g_debugEntities",               "0",                                0,                                               0, qfalse           },
+	{ &g_debugFire,                   "g_debugFire",                   "0",                                0,                                               0, qfalse           },
 
 	// gameplay: basic
 	{ &g_timelimit,                   "timelimit",                     "45",                               CVAR_SERVERINFO,                                 0, qtrue            },
@@ -363,6 +361,7 @@ static cvarTable_t gameCvarTable[] =
 	{ &g_initialMineRate,             "g_initialMineRate",             DEFAULT_INITIAL_MINE_RATE,          0,                                               0, qfalse           },
 	{ &g_mineRateHalfLife,            "g_mineRateHalfLife",            DEFAULT_MINE_RATE_HALF_LIFE,        0,                                               0, qfalse           },
 	{ &g_minimumMineRate,             "g_minimumMineRate",             DEFAULT_MINIMUM_MINE_RATE,          0,                                               0, qfalse           },
+	{ &g_buildPointLossFraction,      "g_buildPointLossFraction",      DEFAULT_BP_LOSS_FRAC,               0,                                               0, qfalse           },
 
 	// gameplay: momentum
 	{ &g_unlockableMinTime,           "g_unlockableMinTime",           DEFAULT_UNLOCKABLE_MIN_TIME,        CVAR_SERVERINFO,                                 0, qfalse           },
@@ -687,14 +686,12 @@ void G_MapConfigs( const char *mapname )
 		return;
 	}
 
-	trap_SendConsoleCommand( EXEC_APPEND,
-	                         va( "exec %s/default.cfg\n", Quote( g_mapConfigs.string ) ) );
+	trap_SendConsoleCommand( va( "exec %s/default.cfg\n", Quote( g_mapConfigs.string ) ) );
 
-	trap_SendConsoleCommand( EXEC_APPEND,
-	                         va( "exec %s/%s.cfg\n", Quote( g_mapConfigs.string ), Quote( mapname ) ) );
+	trap_SendConsoleCommand( va( "exec %s/%s.cfg\n", Quote( g_mapConfigs.string ), Quote( mapname ) ) );
 
 	trap_Cvar_Set( "g_mapConfigsLoaded", "1" );
-	trap_SendConsoleCommand( EXEC_APPEND, "maprestarted\n" );
+	trap_SendConsoleCommand( "maprestarted\n" );
 }
 
 /*
@@ -703,7 +700,7 @@ G_InitGame
 
 ============
 */
-void G_InitGame( int levelTime, int randomSeed, int restart )
+void G_InitGame( int levelTime, int randomSeed, int restart, bool inClient )
 {
 	int i;
 
@@ -720,6 +717,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 	// set some level globals
 	memset( &level, 0, sizeof( level ) );
 	level.time = levelTime;
+	level.inClient = inClient;
 	level.startTime = levelTime;
 	level.snd_fry = G_SoundIndex( "sound/misc/fry.wav" );  // FIXME standing in lava / slime
 
@@ -749,7 +747,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 			G_LogPrintf( "------------------------------------------------------------\n" );
 			G_LogPrintf( "InitGame: %s\n", serverinfo );
 
-			trap_GMTime( &qt );
+			Com_GMTime( &qt );
 			G_LogPrintf( "RealTime: %04i-%02i-%02i %02i:%02i:%02i Z\n",
 			             1900 + qt.tm_year, qt.tm_mon + 1, qt.tm_mday,
 			             qt.tm_hour, qt.tm_min, qt.tm_sec );
@@ -767,7 +765,7 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 		char    logfile[ 128 ], mapname[ 64 ];
 		qtime_t qt;
 
-		trap_GMTime( &qt );
+		Com_GMTime( &qt );
 		trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
 
 		Com_sprintf( logfile, sizeof( logfile ),
@@ -857,6 +855,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 	// add any fake entities
 	G_SpawnFakeEntities();
 
+	BaseClustering::Init();
+
 	// load up a custom building layout if there is one
 	G_LayoutLoad();
 
@@ -871,6 +871,8 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 
 	G_FindEntityGroups();
 	G_InitSetEntities();
+
+	G_CheckPmoveParamChanges();
 
 	G_InitDamageLocations();
 
@@ -888,10 +890,16 @@ void G_InitGame( int levelTime, int randomSeed, int restart )
 	BG_PrintVoices( level.voices, g_debugVoices.integer );
 
 	// Give both teams some build points to start out with.
-	level.team[ TEAM_HUMANS ].buildPoints = MAX( 0, g_initialBuildPoints.integer -
-	                                        level.team[ TEAM_HUMANS ].layoutBuildPoints );
-	level.team[ TEAM_ALIENS ].buildPoints = MAX( 0, g_initialBuildPoints.integer -
-	                                        level.team[ TEAM_ALIENS ].layoutBuildPoints );
+	for ( int team = TEAM_NONE + 1; team < NUM_TEAMS; team++ )
+	{
+		int startBP = std::max( 0, g_initialBuildPoints.integer -
+		                        level.team[ (team_t)team ].layoutBuildPoints );
+
+		G_ModifyBuildPoints( (team_t)team, (float)startBP );
+		G_MarkBuildPointsMined( (team_t)team, (float)startBP );
+
+		level.team[ (team_t)team ].mainStructAcquiredBP = std::max( (float)startBP, FLT_EPSILON );
+	}
 
 	G_Printf( "-----------------------------------\n" );
 
@@ -1027,6 +1035,37 @@ void QDECL PRINTF_LIKE(1) Com_Printf( const char *msg, ... )
 	va_end( argptr );
 
 	trap_Print( text );
+}
+
+void G_CheckPmoveParamChanges() {
+	if ( pmove_msec.integer < 8 )
+	{
+		trap_Cvar_Set( "pmove_msec", "8" );
+	}
+	else if ( pmove_msec.integer > 33 )
+	{
+		trap_Cvar_Set( "pmove_msec", "33" );
+	}
+
+	if(not level.pmoveParams.initialized or
+			level.pmoveParams.synchronous != g_synchronousClients.integer or
+			level.pmoveParams.msec != pmove_msec.integer or
+			level.pmoveParams.fixed != pmove_fixed.integer or
+			level.pmoveParams.accurate != pmove_accurate.integer) {
+		level.pmoveParams.initialized = true;
+		level.pmoveParams.synchronous = g_synchronousClients.integer;
+		level.pmoveParams.msec = pmove_msec.integer;
+		level.pmoveParams.fixed = pmove_fixed.integer;
+		level.pmoveParams.accurate = pmove_accurate.integer;
+		G_SendClientPmoveParams(-1);
+	}
+}
+void G_SendClientPmoveParams(int client) {
+	trap_SendServerCommand(client, va("pmove_params %i %i %i %i",
+		level.pmoveParams.synchronous,
+		level.pmoveParams.fixed,
+		level.pmoveParams.msec,
+		level.pmoveParams.accurate));
 }
 
 /*
@@ -1386,98 +1425,6 @@ void G_CountSpawns( void )
 	}
 }
 
-#define CALCULATE_MINE_RATE_PERIOD 1000
-
-/**
- * @brief Recalculate the mine rate and the teams mine efficiencies.
- */
-void G_CalculateMineRate( void )
-{
-	int              i, playerNum;
-	gentity_t        *ent, *player;
-	gclient_t        *client;
-	float            tmp;
-
-	static int       nextCalculation = 0;
-
-	if ( level.time < nextCalculation )
-	{
-		return;
-	}
-
-	level.team[ TEAM_HUMANS ].mineEfficiency = 0.0f;
-	level.team[ TEAM_ALIENS ].mineEfficiency = 0.0f;
-
-	// sum up mine rates of RGS
-	for ( i = MAX_CLIENTS, ent = g_entities + i; i < level.num_entities; i++, ent++ )
-	{
-		if ( ent->s.eType != ET_BUILDABLE )
-		{
-			continue;
-		}
-
-		switch ( ent->s.modelindex )
-		{
-			case BA_H_DRILL:
-				level.team[ TEAM_HUMANS ].mineEfficiency += ent->mineEfficiency;
-				break;
-
-			case BA_A_LEECH:
-				level.team[ TEAM_ALIENS ].mineEfficiency += ent->mineEfficiency;
-				break;
-		}
-	}
-
-	// minimum mine rate
-	// g_minimumMineRate is really a minimum mine efficiency in percent points
-	if ( G_ActiveReactor() && level.team[ TEAM_HUMANS ].mineEfficiency < ( g_minimumMineRate.value / 100.0f ) )
-	{
-		level.team[ TEAM_HUMANS ].mineEfficiency = ( g_minimumMineRate.value / 100.0f );
-	}
-	if ( G_ActiveOvermind() && level.team[ TEAM_ALIENS ].mineEfficiency < ( g_minimumMineRate.value / 100.0f ) )
-	{
-		level.team[ TEAM_ALIENS ].mineEfficiency = ( g_minimumMineRate.value / 100.0f );
-	}
-
-	// calculate level wide mine rate. ln(2) ~= 0.6931472
-	level.mineRate = g_initialMineRate.value *
-	                 exp( ( -0.6931472f * level.matchTime ) / ( 60000.0f * g_mineRateHalfLife.value ) );
-
-	// add build points
-	tmp = ( level.mineRate / 60.0f ) * ( CALCULATE_MINE_RATE_PERIOD / 1000.0f );
-	G_ModifyBuildPoints( TEAM_HUMANS, tmp * level.team[ TEAM_HUMANS ].mineEfficiency );
-	G_ModifyBuildPoints( TEAM_ALIENS, tmp * level.team[ TEAM_ALIENS ].mineEfficiency );
-
-	// send to clients
-	for ( playerNum = 0; playerNum < level.maxclients; playerNum++ )
-	{
-		team_t team;
-
-		player = &g_entities[ playerNum ];
-		client = player->client;
-
-		if ( !client )
-		{
-			continue;
-		}
-
-		team = (team_t) client->pers.team;
-
-		client->ps.persistant[ PERS_MINERATE ] = ( short )( level.mineRate * 10.0f );
-
-		if ( team > TEAM_NONE && team < NUM_TEAMS )
-		{
-			client->ps.persistant[ PERS_RGS_EFFICIENCY ] = ( short )( level.team[ team ].mineEfficiency * 100.0f );
-		}
-		else
-		{
-			client->ps.persistant[ PERS_RGS_EFFICIENCY ] = 0;
-		}
-	}
-
-	nextCalculation = level.time + CALCULATE_MINE_RATE_PERIOD;
-}
-
 /*
 ============
 G_CalculateAvgPlayers
@@ -1812,11 +1759,11 @@ void ExitLevel( void )
 	if ( !Q_stricmp( currentMapName, g_nextMap.string ) )
 	{
 		trap_Cvar_Set( "g_layouts", g_nextMapLayouts.string );
-		trap_SendConsoleCommand( EXEC_APPEND, "map_restart" );
+		trap_SendConsoleCommand( "map_restart" );
 	}
 	else if ( G_MapExists( g_nextMap.string ) )
 	{
-		trap_SendConsoleCommand( EXEC_APPEND, va( "map %s %s\n", Quote( g_nextMap.string ), Quote( g_nextMapLayouts.string ) ) );
+		trap_SendConsoleCommand( va( "map %s %s\n", Quote( g_nextMap.string ), Quote( g_nextMapLayouts.string ) ) );
 	}
 	else if ( G_MapRotationActive() )
 	{
@@ -1824,7 +1771,7 @@ void ExitLevel( void )
 	}
 	else
 	{
-		trap_SendConsoleCommand( EXEC_APPEND, "map_restart\n" );
+		trap_SendConsoleCommand( "map_restart\n" );
 	}
 
 	trap_Cvar_Set( "g_nextMap", "" );
@@ -1919,7 +1866,7 @@ void QDECL PRINTF_LIKE(1) G_LogPrintf( const char *fmt, ... )
 	Q_vsnprintf( string + 7, sizeof( string ) - 7, fmt, argptr );
 	va_end( argptr );
 
-	if ( g_dedicated.integer )
+	if ( !level.inClient )
 	{
 		G_UnEscapeString( string, decolored, sizeof( decolored ) );
 		G_Printf( "%s", decolored + 7 );
@@ -2007,7 +1954,7 @@ static void G_LogGameplayStats( int state )
 			qtime_t t;
 
 			trap_Cvar_VariableStringBuffer( "mapname", mapname, sizeof( mapname ) );
-			trap_GMTime( &t );
+			Com_GMTime( &t );
 
 			Com_sprintf( logline, sizeof( logline ),
 			             "# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n"
@@ -2063,8 +2010,8 @@ static void G_LogGameplayStats( int state )
 			{
 				num[ team ] = level.team[ team ].numClients;
 				Mom[ team ] = ( int )level.team[ team ].momentum;
-				ME [ team ] = level.team[ team ].mineEfficiency;
-				BP [ team ] = level.team[ team ].buildPoints;
+				ME [ team ] = ( int )level.team[ team ].mineEfficiency;
+				BP [ team ] = G_GetBuildPointsInt( (team_t)team );
 			}
 
 			G_GetBuildableResourceValue( BRV );
@@ -2602,8 +2549,7 @@ void G_ExecuteVote( team_t team )
 {
 	level.team[ team ].voteExecuteTime = 0;
 
-	trap_SendConsoleCommand( EXEC_APPEND, va( "%s\n",
-	                         level.team[ team ].voteString ) );
+	trap_SendConsoleCommand( va( "%s\n", level.team[ team ].voteString ) );
 
 	if ( !Q_stricmp( level.team[ team ].voteString, "map_restart" ) )
 	{
@@ -2894,6 +2840,8 @@ void G_RunFrame( int levelTime )
 	// now we are done spawning
 	level.spawning = qfalse;
 
+	G_CheckPmoveParamChanges();
+
 	//
 	// go through all allocated objects
 	//
@@ -3003,12 +2951,13 @@ void G_RunFrame( int levelTime )
 
 	G_CountSpawns();
 	G_SetHumanBuildablePowerState();
-	G_CalculateMineRate();
+	G_MineBuildPoints();
 	G_DecreaseMomentum();
 	G_CalculateAvgPlayers();
 	G_SpawnClients( TEAM_ALIENS );
 	G_SpawnClients( TEAM_HUMANS );
 	G_UpdateZaps( msec );
+	Beacon::Frame( );
 
 	// log gameplay statistics
 	G_LogGameplayStats( LOG_GAMEPLAY_STATS_BODY );

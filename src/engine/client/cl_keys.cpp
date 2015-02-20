@@ -35,6 +35,9 @@ Maryland 20850 USA.
 #include "client.h"
 #include "../qcommon/q_unicode.h"
 #include "../framework/CommandSystem.h"
+#ifdef BUILD_CLIENT
+#include <SDL.h>
+#endif
 
 /*
 
@@ -426,11 +429,12 @@ void Field_BigDraw(const Util::LineEditData& edit, int x, int y, qboolean showCu
 Field_Paste
 ================
 */
-static void Field_Paste(Util::LineEditData& edit, clipboard_t clip )
+static void Field_Paste(Util::LineEditData& edit)
 {
+#ifdef BUILD_CLIENT
 	const char *cbd;
 	int        pasteLen, width;
-	char       *ptr = Sys_GetClipboardData(clip);
+	char       *ptr = SDL_GetClipboardText();
 
 	if ( !ptr )
 	{
@@ -438,7 +442,7 @@ static void Field_Paste(Util::LineEditData& edit, clipboard_t clip )
 	}
 
 	cbd = Com_ClearForeignCharacters( ptr );
-	Z_Free( ptr );
+	SDL_free( ptr );
 
 	// send as if typed, so insert / overstrike works properly
 	pasteLen = strlen( cbd );
@@ -450,6 +454,7 @@ static void Field_Paste(Util::LineEditData& edit, clipboard_t clip )
 		cbd += width;
 		pasteLen -= width;
 	}
+#endif
 }
 
 /*
@@ -462,16 +467,6 @@ in-game talk, and menu fields
 Key events are used for non-printable characters, others are gotten from char events.
 =================
 */
-#ifdef BUILD_TTY_CLIENT
-# define SDL1_case(v)
-#else
-# include "SDL_version.h"
-# if SDL_VERSION_ATLEAST( 2, 0, 0 )
-#  define SDL1_case(v)
-# else
-#  define SDL1_case(v) case v:
-# endif
-#endif
 void Field_KeyDownEvent(Util::LineEditData& edit, int key) {
     key = tolower(key);
 
@@ -480,12 +475,6 @@ void Field_KeyDownEvent(Util::LineEditData& edit, int key) {
             edit.DeleteNext();
             break;
 
-#ifndef BUILD_TTY_CLIENT
-# if !SDL_VERSION_ATLEAST( 2, 0, 0 )
-        case 'h':
-            if ( keys[ K_CTRL ].down )
-# endif
-#endif
         case K_BACKSPACE:
             edit.DeletePrev();
             break;
@@ -515,7 +504,6 @@ void Field_KeyDownEvent(Util::LineEditData& edit, int key) {
             break;
 
         case K_HOME:
-		SDL1_case( 1 )
             edit.CursorStart();
             break;
 
@@ -526,13 +514,12 @@ void Field_KeyDownEvent(Util::LineEditData& edit, int key) {
             break;
 
         case K_END:
-		SDL1_case( 5 )
             edit.CursorEnd();
             break;
 
         case K_INS:
             if (keys[ K_SHIFT ].down) {
-                Field_Paste(edit, SELECTION_PRIMARY);
+                Field_Paste(edit);
             } else {
                 key_overstrikeMode = !key_overstrikeMode;
             }
@@ -542,7 +529,6 @@ void Field_KeyDownEvent(Util::LineEditData& edit, int key) {
         //kangz: I'm not sure we *need* this shortcut
         case 't':
             if ( keys[ K_CTRL ].down )
-		SDL1_case( 20 )
 			if( edit->cursor)
 			{
                 char *p, tmp[4];
@@ -566,28 +552,23 @@ void Field_KeyDownEvent(Util::LineEditData& edit, int key) {
         */
         case 'v':
             if (keys[ K_CTRL ].down) {
-		SDL1_case( 22 )
-                Field_Paste( edit, SELECTION_CLIPBOARD );
+                Field_Paste( edit );
             }
             break;
         case 'd':
             if (keys[ K_CTRL ].down) {
-		SDL1_case( 4 )
                 edit.DeleteNext();
             }
             break;
         case 'c':
         case 'u':
             if (keys[ K_CTRL ].down) {
-		SDL1_case( 3 )
-		SDL1_case( 21 )
                 edit.Clear();
             }
             break;
         case 'k':
             if (keys[ K_CTRL ].down) {
-		SDL1_case( 11 )
-		edit.DeleteEnd();
+				edit.DeleteEnd();
             }
             break;
     }
@@ -929,7 +910,7 @@ int Key_GetTeam( const char *arg, const char *cmd )
 
 		if ( t != CLIP( t ) )
 		{
-			Com_Printf( _("^3%s:^7 %d is not a valid team number\n"), cmd, t );
+			Com_Printf( "^3%s:^7 %d is not a valid team number\n", cmd, t );
 			return -1;
 		}
 
@@ -948,7 +929,7 @@ int Key_GetTeam( const char *arg, const char *cmd )
 	}
 
 fail:
-	Com_Printf( _("^3%s:^7 '%s^7' is not a valid team name\n"), cmd, arg );
+	Com_Printf( "^3%s:^7 '%s^7' is not a valid team name\n", cmd, arg );
 	return -1;
 }
 
@@ -1072,7 +1053,7 @@ void Key_Unbind_f( void )
 
 	if ( b < 2 || b > 3 )
 	{
-		Cmd_PrintUsage(_("[<team>] <key>"), _("remove commands from a key"));
+		Cmd_PrintUsage("[<team>] <key>", "remove commands from a key");
 		return;
 	}
 
@@ -1090,7 +1071,7 @@ void Key_Unbind_f( void )
 
 	if ( b == -1 )
 	{
-		Com_Printf(_( "\"%s\" isn't a valid key\n"), Cmd_Argv( 1 ) );
+		Com_Printf( "\"%s\" isn't a valid key\n", Cmd_Argv( 1 ) );
 		return;
 	}
 
@@ -1130,7 +1111,7 @@ void Key_Bind_f( void )
 
 	if ( c < 2 + teambind )
 	{
-		Cmd_PrintUsage( teambind ? _("<team> <key> [<command>]") : _("<key> [<command>]"), _("attach a command to a key"));
+		Cmd_PrintUsage( teambind ? "<team> <key> [<command>]" : "<key> [<command>]", "attach a command to a key");
 		return;
 	}
 	else if ( c > 2 + teambind )
@@ -1153,7 +1134,7 @@ void Key_Bind_f( void )
 
 	if ( b == -1 )
 	{
-		Com_Printf(_( "\"%s\" isn't a valid key\n"), key );
+		Com_Printf( "\"%s\" isn't a valid key\n", key );
 		return;
 	}
 
@@ -1169,7 +1150,7 @@ void Key_Bind_f( void )
 			}
 			else
 			{
-				Com_Printf(_( "\"%s\"[%s] is not bound\n"), key, teamName[ team ] );
+				Com_Printf( "\"%s\"[%s] is not bound\n", key, teamName[ team ] );
 			}
 		}
 		else
@@ -1188,7 +1169,7 @@ void Key_Bind_f( void )
 
 			if ( !bound )
 			{
-				Com_Printf(_( "\"%s\" is not bound\n"), key );
+				Com_Printf( "\"%s\" is not bound\n", key );
 			}
 		}
 
@@ -1223,7 +1204,7 @@ void Key_EditBind_f( void )
 
 	if ( b < 2 || b > 3 )
 	{
-		Cmd_PrintUsage(_("[<team>] <key>"), NULL);
+		Cmd_PrintUsage("[<team>] <key>", NULL);
 		return;
 	}
 
@@ -1242,7 +1223,7 @@ void Key_EditBind_f( void )
 
 	if ( b == -1 )
 	{
-		Com_Printf(_( "\"%s\" isn't a valid key\n"), key );
+		Com_Printf( "\"%s\" isn't a valid key\n", key );
 		return;
 	}
 
@@ -1522,8 +1503,6 @@ static void Key_CompleteEditbind( char *args, int argNum )
 Helper functions for Cmd_If_f & Cmd_ModCase_f
 ===============
 */
-static const char modifierList[] = N_("shift, ctrl, alt, command/cmd, mode, super, compose, menu; ! negates; e.g. shift,!alt");
-
 static const struct
 {
 	char name[ 8 ];
@@ -1596,7 +1575,7 @@ static modifierMask_t getModifierMask( const char *mods )
 
 				if ( ( mask.down & mask.up ) & modifierKeys[ i ].bit )
 				{
-					Com_Printf(_( "can't have %s both pressed and not pressed\n"), modifierKeys[ i ].name );
+					Com_Printf( "can't have %s both pressed and not pressed\n", modifierKeys[ i ].name );
 					return none;
 				}
 
@@ -1617,7 +1596,7 @@ static modifierMask_t getModifierMask( const char *mods )
 
 		if ( !modifierKeys[ i ].bit )
 		{
-			Com_Printf(_( "unknown modifier key name in \"%s\"\n"), mods );
+			Com_Printf( "unknown modifier key name in \"%s\"\n", mods );
 			return none;
 		}
 	}
@@ -1681,7 +1660,7 @@ void Key_ModCase_f( void )
 
 	if ( argc < 3 )
 	{
-		Cmd_PrintUsage(_( "<modifiers> <command> [<modifiers> <command>] … [<command>]"), NULL );
+		Cmd_PrintUsage( "<modifiers> <command> [<modifiers> <command>] … [<command>]", NULL );
 		return;
 	}
 
@@ -1797,7 +1776,7 @@ void CL_KeyEvent( int key, qboolean down, unsigned time )
 		case K_KP_INS:
 		case K_KP_DEL:
 		case K_KP_HOME:
-			if ( Sys_IsNumLockDown() )
+			if ( IN_IsNumLockDown() )
 			{
 				onlybinds = qtrue;
 			}
@@ -1846,7 +1825,7 @@ void CL_KeyEvent( int key, qboolean down, unsigned time )
 		else if ( key == K_TAB )
 		{
 			Key_ClearStates();
-			Cbuf_ExecuteText( EXEC_APPEND, "minimize\n" );
+			Cmd::BufferCommandText("minimize");
 			return;
 		}
 	}
@@ -1866,7 +1845,7 @@ void CL_KeyEvent( int key, qboolean down, unsigned time )
 	if ( cl_altTab->integer && keys[ K_ALT ].down && key == K_TAB )
 	{
 		Key_ClearStates();
-		Cbuf_ExecuteText( EXEC_APPEND, "minimize\n" );
+		Cmd::BufferCommandText("minimize");
 		return;
 	}
 #endif
@@ -1946,11 +1925,11 @@ void CL_KeyEvent( int key, qboolean down, unsigned time )
 		// Handle any +commands which were invoked on the corresponding key-down
 		Cmd::BufferCommandText(va("keyup %d %d %u", plusCommand.check, key, time));
 
-		if ( cls.keyCatchers & KEYCATCH_CGAME && cgvm )
+		if ( cls.keyCatchers & KEYCATCH_CGAME && cgvm.IsActive() )
 		{
 			if ( !onlybinds )
 			{
-				VM_Call( cgvm, CG_KEY_EVENT, key, down );
+				cgvm.CGameKeyEvent(key, down);
 			}
 		}
 
@@ -1967,11 +1946,11 @@ void CL_KeyEvent( int key, qboolean down, unsigned time )
 	}
 	else if ( cls.keyCatchers & KEYCATCH_CGAME && !bypassMenu )
 	{
-		if ( cgvm )
+		if ( cgvm.IsActive() )
 		{
 			if ( !onlybinds )
 			{
-				VM_Call( cgvm, CG_KEY_EVENT, key, down );
+				cgvm.CGameKeyEvent(key, down);
 			}
 		}
 	}

@@ -41,7 +41,6 @@ extern gclient_t *g_clients;
 // cvars
 // -----
 
-extern  vmCvar_t g_dedicated;
 extern  vmCvar_t g_cheats;
 extern  vmCvar_t g_maxclients;
 extern  vmCvar_t g_maxGameClients;
@@ -64,7 +63,6 @@ extern  vmCvar_t g_debugDamage;
 extern  vmCvar_t g_debugKnockback;
 extern  vmCvar_t g_debugTurrets;
 extern  vmCvar_t g_debugFire;
-extern  vmCvar_t g_synchronousClients;
 extern  vmCvar_t g_motd;
 extern  vmCvar_t g_warmup;
 extern  vmCvar_t g_doWarmup;
@@ -86,14 +84,12 @@ extern  vmCvar_t g_botKickVotesAllowed;
 extern  vmCvar_t g_botKickVotesAllowedThisMap;
 extern  vmCvar_t g_teamForceBalance;
 extern  vmCvar_t g_smoothClients;
-extern  vmCvar_t pmove_fixed;
-extern  vmCvar_t pmove_msec;
-extern  vmCvar_t pmove_accurate;
 
 extern  vmCvar_t g_initialMineRate;
 extern  vmCvar_t g_initialBuildPoints;
 extern  vmCvar_t g_mineRateHalfLife;
 extern  vmCvar_t g_minimumMineRate;
+extern  vmCvar_t g_buildPointLossFraction;
 
 extern  vmCvar_t g_debugMomentum;
 extern  vmCvar_t g_momentumHalfLife;

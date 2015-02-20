@@ -40,6 +40,7 @@ Maryland 20850 USA.
 #include "../botlib/bot_api.h"
 #include "../server/g_api.h"
 #include "../framework/VirtualMachine.h"
+#include "../framework/CommonVMServices.h"
 
 //=============================================================================
 
@@ -308,20 +309,14 @@ typedef struct
 
 //=============================================================================
 
-namespace VM {
-    class CommonVMServices;
-}
-
 class GameVM: public VM::VMBase {
 public:
 	GameVM();
-    virtual ~GameVM();
-	bool Start();
+	void Start();
 
 	void GameStaticInit();
 	void GameInit(int levelTime, int randomSeed, qboolean restart);
 	void GameShutdown(qboolean restart);
-	void GameLoadMap(Str::StringRef name);
 	qboolean GameClientConnect(char* reason, size_t size, int clientNum, qboolean firstTime, qboolean isBot);
 	void GameClientBegin(int clientNum);
 	void GameClientUserInfoChanged(int clientNum);
@@ -334,19 +329,19 @@ public:
 	void GameMessageRecieved(int clientNum, const char *buffer, int bufferSize, int commandTime);
 
 private:
-	virtual void Syscall(uint32_t id, IPC::Reader reader, IPC::Channel& channel) OVERRIDE FINAL;
-	void QVMSyscall(int index, IPC::Reader& reader, IPC::Channel& channel);
+	virtual void Syscall(uint32_t id, Util::Reader reader, IPC::Channel& channel) OVERRIDE FINAL;
+	void QVMSyscall(int index, Util::Reader& reader, IPC::Channel& channel);
 
 	IPC::SharedMemory shmRegion;
 
-    std::unique_ptr<VM::CommonVMServices> services;
+	std::unique_ptr<VM::CommonVMServices> services;
 };
 
 //=============================================================================
 
 extern serverStatic_t svs; // persistent server info across maps
 extern server_t       sv; // cleared each map
-extern GameVM         *gvm; // game virtual machine
+extern GameVM         gvm; // game virtual machine
 
 extern cvar_t         *sv_fps;
 extern cvar_t         *sv_timeout;
@@ -369,8 +364,6 @@ extern cvar_t         *sv_serverid;
 extern cvar_t         *sv_maxRate;
 extern cvar_t         *sv_minPing;
 extern cvar_t         *sv_maxPing;
-
-extern cvar_t *sv_newGameShlib;
 
 extern cvar_t *sv_pure;
 extern cvar_t *sv_floodProtect;
@@ -400,6 +393,8 @@ extern cvar_t *sv_fullmsg;
 extern cvar_t *sv_voip;
 #endif
 
+extern Cvar::Cvar<bool> isLanOnly;
+
 //===========================================================
 
 //
@@ -411,6 +406,8 @@ void       SV_PrintTranslatedText( const char *text, qboolean broadcast, qboolea
 
 void       SV_AddOperatorCommands( void );
 void       SV_RemoveOperatorCommands( void );
+
+void       SV_NET_Config( void );
 
 void       SV_MasterHeartbeat( const char *hbname );
 void       SV_MasterShutdown( void );
@@ -492,7 +489,7 @@ playerState_t  *SV_GameClientNum( int num );
 
 svEntity_t     *SV_SvEntityForGentity( sharedEntity_t *gEnt );
 sharedEntity_t *SV_GEntityForSvEntity( svEntity_t *svEnt );
-GameVM         *SV_CreateGameVM( void );
+std::unique_ptr<GameVM> SV_CreateGameVM( void );
 void           SV_InitGameProgs(Str::StringRef mapname);
 void           SV_ShutdownGameProgs( void );
 void           SV_RestartGameProgs(Str::StringRef mapname);
@@ -505,67 +502,11 @@ void           SV_GameCommandHandler( void );
 //
 // sv_bot.c
 //
-int  SV_BotAllocateClient( int clientNum );
+int  SV_BotAllocateClient( void );
 void SV_BotFreeClient( int clientNum );
+bool SV_IsBot( const client_t* client );
 
-int  SV_BotGetSnapshotEntity( int client, int ent );
 int  SV_BotGetConsoleMessage( int client, char *buf, int size );
-
-//============================================================
-//
-// high level object sorting to reduce interaction tests
-//
-
-void SV_ClearWorld( void );
-
-// called after the world model has been loaded, before linking any entities
-
-void SV_UnlinkEntity( sharedEntity_t *ent );
-
-// call before removing an entity, and before trying to move one,
-// so it doesn't clip against itself
-
-void SV_LinkEntity( sharedEntity_t *ent );
-
-// Needs to be called any time an entity changes origin, mins, maxs,
-// or solid.  Automatically unlinks if needed.
-// sets ent->r.absmin and ent->r.absmax
-// sets ent->leafnums[] for pvs determination even if the entity
-// is not solid
-
-clipHandle_t SV_ClipHandleForEntity( const sharedEntity_t *ent );
-
-void         SV_SectorList_f( void );
-
-int          SV_AreaEntities( const vec3_t mins, const vec3_t maxs, int *entityList, int maxcount );
-
-// fills in a table of entity numbers with entities that have bounding boxes
-// that intersect the given area.  It is possible for a non-axial bmodel
-// to be returned that doesn't actually intersect the area on an exact
-// test.
-// returns the number of pointers filled in
-// The world entity is never returned in this list.
-
-int SV_PointContents( const vec3_t p, int passEntityNum );
-
-// returns the CONTENTS_* value from the world and all entities at the given point.
-
-void SV_Trace( trace_t *results, const vec3_t start, vec3_t mins, vec3_t maxs, const vec3_t end, int passEntityNum,
-               int contentmask, traceType_t type );
-
-// mins and maxs are relative
-
-// if the entire move stays in a solid volume, trace.allsolid will be set,
-// trace.startsolid will be set, and trace.fraction will be 0
-
-// if the starting point is in a solid, it will be allowed to move out
-// to an open area
-
-// passEntityNum, if isn't ENTITYNUM_NONE, will be explicitly excluded from clipping checks
-
-void SV_ClipToEntity( trace_t *trace, const vec3_t start, const vec3_t mins, const vec3_t maxs, const vec3_t end, int entityNum, int contentmask, traceType_t type );
-
-// clip to a specific entity
 
 //
 // sv_net_chan.c

@@ -335,7 +335,7 @@ void Tess_ClipSkyPolygons()
 	{
 		for ( j = 0; j < 3; j++ )
 		{
-			VectorSubtract( tess.xyz[ tess.indexes[ i + j ] ], backEnd.viewParms.orientation.origin, p[ j ] );
+			VectorSubtract( tess.verts[ tess.indexes[ i + j ] ].xyz, backEnd.viewParms.orientation.origin, p[ j ] );
 		}
 
 		ClipSkyPolygon( 3, p[ 0 ], 0 );
@@ -444,11 +444,10 @@ static void FillCloudySkySide( const int mins[ 2 ], const int maxs[ 2 ], qboolea
 	{
 		for ( s = mins[ 0 ] + HALF_SKY_SUBDIVISIONS; s <= maxs[ 0 ] + HALF_SKY_SUBDIVISIONS; s++ )
 		{
-			VectorAdd( s_skyPoints[ t ][ s ], backEnd.viewParms.orientation.origin, tess.xyz[ tess.numVertexes ] );
-			tess.xyz[ tess.numVertexes ][ 3 ] = 1;
+			VectorAdd( s_skyPoints[ t ][ s ], backEnd.viewParms.orientation.origin, tess.verts[ tess.numVertexes ].xyz );
 
-			tess.texCoords[ tess.numVertexes ][ 0 ] = s_skyTexCoords[ t ][ s ][ 0 ];
-			tess.texCoords[ tess.numVertexes ][ 1 ] = s_skyTexCoords[ t ][ s ][ 1 ];
+			tess.verts[ tess.numVertexes ].texCoords[ 0 ] = s_skyTexCoords[ t ][ s ][ 0 ];
+			tess.verts[ tess.numVertexes ].texCoords[ 1 ] = s_skyTexCoords[ t ][ s ][ 1 ];
 
 			tess.numVertexes++;
 
@@ -502,6 +501,8 @@ static void DrawSkyBox( shader_t *shader )
 	tess.attribsSet = 0;
 
 	GL_State( GLS_DEFAULT );
+
+	Tess_MapVBOs( qfalse );
 
 	for ( i = 0; i < 6; i++ )
 	{
@@ -573,7 +574,8 @@ static void DrawSkyBox( shader_t *shader )
 		// only add indexes for first stage
 		FillCloudySkySide( sky_mins_subd, sky_maxs_subd, qtrue );
 	}
-	Tess_UpdateVBOs( tess.attribsSet );
+	Tess_UpdateVBOs( );
+	GL_VertexAttribsState( tess.attribsSet );
 
 	Tess_DrawElements();
 }
@@ -681,6 +683,8 @@ static void BuildCloudData()
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
 	tess.attribsSet = 0;
+
+	Tess_MapVBOs( qfalse );
 
 	if ( tess.surfaceShader->sky.cloudHeight )
 	{

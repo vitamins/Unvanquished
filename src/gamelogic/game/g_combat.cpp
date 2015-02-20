@@ -78,12 +78,13 @@ static const char *const modNames[] =
 	"MOD_SWARM",
 
 	"MOD_HSPAWN",
-	"MOD_TESLAGEN",
+	"MOD_ROCKETPOD",
 	"MOD_MGTURRET",
 	"MOD_REACTOR",
 
 	"MOD_ASPAWN",
 	"MOD_ATUBE",
+	"MOD_SPIKER",
 	"MOD_OVERMIND",
 	"MOD_DECONSTRUCT",
 	"MOD_REPLACE",
@@ -213,7 +214,9 @@ void G_RewardAttackers( gentity_t *self )
 	{
 		ownTeam   = (team_t) self->buildableTeam;
 		maxHealth = BG_Buildable( self->s.modelindex )->health;
-		value     = BG_Buildable( self->s.modelindex )->value;
+		value     = BG_IsMainStructure( &self->s )
+		            ? MAIN_STRUCTURE_MOMENTUM_VALUE
+		            : BG_Buildable( self->s.modelindex )->buildPoints;
 
 		// Give partial credits for buildables in construction
 		if ( !self->spawned )
@@ -280,7 +283,7 @@ void G_RewardAttackers( gentity_t *self )
 			G_AddMomentumToScore( player, reward );
 
 			// Add momentum
-			G_AddMomentumForDestroyingStep( self, player, share );
+			G_AddMomentumForDestroyingStep( self, player, reward );
 		}
 		else
 		{
@@ -555,6 +558,8 @@ void G_PlayerDie( gentity_t *self, gentity_t *inflictor, gentity_t *attacker, in
 		// globally cycle through the different death animations
 		i = ( i + 1 ) % 3;
 	}
+
+	Beacon::DetachTags( self );
 
 	trap_LinkEntity( self );
 
@@ -1106,7 +1111,7 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 	}
 
 	// do knockback against clients
-	if ( client && !( damageFlags & DAMAGE_NO_KNOCKBACK ) && dir )
+	if ( client && ( damageFlags & DAMAGE_KNOCKBACK ) && dir )
 	{
 		// scale knockback by weapon
 		if ( inflictor->s.weapon != WP_NONE )
@@ -1120,12 +1125,6 @@ void G_Damage( gentity_t *target, gentity_t *inflictor, gentity_t *attacker,
 
 		// apply generic damage to knockback modifier
 		knockback *= DAMAGE_TO_KNOCKBACK;
-
-		// HACK: Too much knockback from falling makes you bounce and looks silly
-		if ( mod == MOD_FALLING )
-		{
-			knockback = MIN( knockback, MAX_FALLDMG_KNOCKBACK );
-		}
 
 		G_KnockbackByDir( target, dir, knockback, qfalse );
 	}
@@ -1369,7 +1368,7 @@ qboolean G_CanDamage( gentity_t *targ, vec3_t origin )
 	VectorScale( midpoint, 0.5, midpoint );
 
 	VectorCopy( midpoint, dest );
-	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID );
+	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID, 0 );
 
 	if ( tr.fraction == 1.0  || tr.entityNum == targ->s.number )
 	{
@@ -1381,7 +1380,7 @@ qboolean G_CanDamage( gentity_t *targ, vec3_t origin )
 	VectorCopy( midpoint, dest );
 	dest[ 0 ] += 15.0;
 	dest[ 1 ] += 15.0;
-	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID );
+	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID, 0 );
 
 	if ( tr.fraction == 1.0 )
 	{
@@ -1391,7 +1390,7 @@ qboolean G_CanDamage( gentity_t *targ, vec3_t origin )
 	VectorCopy( midpoint, dest );
 	dest[ 0 ] += 15.0;
 	dest[ 1 ] -= 15.0;
-	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID );
+	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID, 0 );
 
 	if ( tr.fraction == 1.0 )
 	{
@@ -1401,7 +1400,7 @@ qboolean G_CanDamage( gentity_t *targ, vec3_t origin )
 	VectorCopy( midpoint, dest );
 	dest[ 0 ] -= 15.0;
 	dest[ 1 ] += 15.0;
-	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID );
+	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID, 0 );
 
 	if ( tr.fraction == 1.0 )
 	{
@@ -1411,7 +1410,7 @@ qboolean G_CanDamage( gentity_t *targ, vec3_t origin )
 	VectorCopy( midpoint, dest );
 	dest[ 0 ] -= 15.0;
 	dest[ 1 ] -= 15.0;
-	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID );
+	trap_Trace( &tr, origin, vec3_origin, vec3_origin, dest, ENTITYNUM_NONE, MASK_SOLID, 0 );
 
 	if ( tr.fraction == 1.0 )
 	{
@@ -1496,10 +1495,8 @@ qboolean G_SelectiveRadiusDamage( vec3_t origin, gentity_t *attacker, float dama
 		{
 			hitClient = qtrue;
 
-			// don't do knockback, since an attack that spares one team is most likely
-			// not based on kinetic energy
 			G_Damage( ent, NULL, attacker, NULL, origin, ( int ) points,
-			          DAMAGE_RADIUS | DAMAGE_NO_LOCDAMAGE | DAMAGE_NO_KNOCKBACK, mod );
+			          DAMAGE_RADIUS | DAMAGE_NO_LOCDAMAGE, mod );
 		}
 	}
 
@@ -1507,7 +1504,7 @@ qboolean G_SelectiveRadiusDamage( vec3_t origin, gentity_t *attacker, float dama
 }
 
 qboolean G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage,
-                         float radius, gentity_t *ignore, int mod )
+                         float radius, gentity_t *ignore, int dflags, int mod, team_t testHit )
 {
 	float     points, dist;
 	gentity_t *ent;
@@ -1517,7 +1514,7 @@ qboolean G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage,
 	vec3_t    v;
 	vec3_t    dir;
 	int       i, e;
-	qboolean  hitClient = qfalse;
+	qboolean  hitSomething = qfalse;
 
 	if ( radius < 1 )
 	{
@@ -1574,18 +1571,25 @@ qboolean G_RadiusDamage( vec3_t origin, gentity_t *attacker, float damage,
 
 		if ( G_CanDamage( ent, origin ) )
 		{
-			VectorSubtract( ent->r.currentOrigin, origin, dir );
-			// push the center of mass higher than the origin so players
-			// get knocked into the air more
-			dir[ 2 ] += 24;
-			VectorNormalize( dir );
-			hitClient = qtrue;
-			G_Damage( ent, NULL, attacker, dir, origin,
-			          ( int ) points, DAMAGE_RADIUS | DAMAGE_NO_LOCDAMAGE, mod );
+			if ( testHit == TEAM_NONE )
+			{
+				VectorSubtract( ent->r.currentOrigin, origin, dir );
+				// push the center of mass higher than the origin so players
+				// get knocked into the air more
+				dir[ 2 ] += 24;
+				VectorNormalize( dir );
+				hitSomething = qtrue;
+				G_Damage( ent, NULL, attacker, dir, origin, ( int ) points,
+				          ( DAMAGE_RADIUS | DAMAGE_NO_LOCDAMAGE | dflags ), mod );
+			}
+			else if ( G_Team( ent ) == testHit && ent->health > 0 )
+			{
+				return qtrue;
+			}
 		}
 	}
 
-	return hitClient;
+	return hitSomething;
 }
 
 /**

@@ -52,7 +52,7 @@ class MapCmd: public Cmd::StaticCmd {
 
         void Run(const Cmd::Args& args) const OVERRIDE {
             if (args.Argc() < 2) {
-                PrintUsage(args, _("<mapname> (layoutname)"), _("loads a new map"));
+                PrintUsage(args, "<mapname> (layoutname)", "loads a new map");
                 return;
             }
 
@@ -60,7 +60,7 @@ class MapCmd: public Cmd::StaticCmd {
 
             //Make sure the map exists to avoid typos that would kill the game
             if (!FS::FindPak("map-" + mapName)) {
-                Print(_("Can't find map %s"), mapName);
+                Print("Can't find map %s", mapName);
                 return;
             }
 
@@ -70,8 +70,8 @@ class MapCmd: public Cmd::StaticCmd {
                 Cvar::SetValue("g_layouts", layouts);
             }
 
-            SV_SpawnServer(mapName.c_str());
             Cvar::SetValueForce("sv_cheats", cheat ? "1" : "0");
+            SV_SpawnServer(mapName.c_str());
         }
 
         Cmd::CompletionResult Complete(int argNum, const Cmd::Args& args, Str::StringRef prefix) const OVERRIDE {
@@ -92,8 +92,8 @@ class MapCmd: public Cmd::StaticCmd {
     private:
         bool cheat;
 };
-static MapCmd MapCmdRegistration("map", N_("starts a new map"), false);
-static MapCmd DevmapCmdRegistration("devmap", N_("starts a new map with cheats enabled"), true);
+static MapCmd MapCmdRegistration("map", "starts a new map", false);
+static MapCmd DevmapCmdRegistration("devmap", "starts a new map with cheats enabled", true);
 
 void MSG_PrioritiseEntitystateFields( void );
 void MSG_PrioritisePlayerStateFields( void );
@@ -119,7 +119,6 @@ static void SV_MapRestart_f( void )
 	qboolean    denied;
 	char        reason[ MAX_STRING_CHARS ];
 	qboolean    isBot;
-	int         delay = 0;
 
 	// make sure we aren't restarting twice in the same frame
 	if ( com_frameTime == sv.serverId )
@@ -130,18 +129,8 @@ static void SV_MapRestart_f( void )
 	// make sure server is running
 	if ( !com_sv_running->integer )
 	{
-		Com_Printf(_( "Server is not running.\n" ));
+		Com_Printf( "Server is not running.\n" );
 		return;
-	}
-
-	// ydnar: allow multiple delayed server restarts [atvi bug 3813]
-	//% if ( sv.restartTime ) {
-	//%     return;
-	//% }
-
-	if ( Cmd_Argc() > 1 )
-	{
-		delay = atoi( Cmd_Argv( 1 ) );
 	}
 
 	// check for changes in variables that can't just be restarted
@@ -150,7 +139,7 @@ static void SV_MapRestart_f( void )
 	{
 		char mapname[ MAX_QPATH ];
 
-		Com_Printf(_( "sv_maxclients variable change — restarting.\n" ));
+		Com_Printf( "sv_maxclients variable change — restarting.\n" );
 		// restart the map the slow way
 		Q_strncpyz( mapname, Cvar_VariableString( "mapname" ), sizeof( mapname ) );
 
@@ -173,14 +162,12 @@ static void SV_MapRestart_f( void )
 	sv.state = SS_LOADING;
 	sv.restarting = qtrue;
 
-	Cvar_Set( "sv_serverRestarting", "1" );
-
 	SV_RestartGameProgs(Cvar_VariableString("mapname"));
 
 	// run a few frames to allow everything to settle
 	for ( i = 0; i < GAME_INIT_FRAMES; i++ )
 	{
-		gvm->GameRunFrame( sv.time );
+		gvm.GameRunFrame( sv.time );
 		svs.time += FRAMETIME;
 		sv.time += FRAMETIME;
 	}
@@ -203,20 +190,13 @@ static void SV_MapRestart_f( void )
 			continue;
 		}
 
-		if ( client->netchan.remoteAddress.type == NA_BOT )
-		{
-			isBot = qtrue;
-		}
-		else
-		{
-			isBot = qfalse;
-		}
+		isBot = SV_IsBot(client);
 
 		// add the map_restart command
 		SV_AddServerCommand( client, "map_restart\n" );
 
 		// connect the client again, without the firstTime flag
-		denied = gvm->GameClientConnect( reason, sizeof( reason ), i, qfalse, isBot );
+		denied = gvm.GameClientConnect( reason, sizeof( reason ), i, qfalse, isBot );
 
 		if ( denied )
 		{
@@ -226,7 +206,7 @@ static void SV_MapRestart_f( void )
 
 			if ( !isBot )
 			{
-				Com_Printf( "SV_MapRestart_f(%d): dropped client %i: denied!\n", delay, i );  // bk010125
+				Com_Printf( "SV_MapRestart_f: dropped client %i: denied!\n", i );
 			}
 
 			continue;
@@ -238,11 +218,9 @@ static void SV_MapRestart_f( void )
 	}
 
 	// run another frame to allow things to look at all the players
-	gvm->GameRunFrame( sv.time );
+	gvm.GameRunFrame( sv.time );
 	svs.time += FRAMETIME;
 	sv.time += FRAMETIME;
-
-	Cvar_Set( "sv_serverRestarting", "0" );
 }
 
 /*
@@ -262,7 +240,7 @@ static void SV_Status_f( void )
 	// make sure server is running
 	if ( !com_sv_running->integer )
 	{
-		Com_Printf(_( "Server is not running.\n" ));
+		Com_Printf( "Server is not running.\n" );
 		return;
 	}
 
@@ -360,11 +338,11 @@ static void SV_Serverinfo_f( void )
 	// make sure server is running
 	if ( !com_sv_running->integer )
 	{
-		Com_Printf(_( "Server is not running.\n" ));
+		Com_Printf( "Server is not running.\n" );
 		return;
 	}
 
-	Com_Printf(_( "Server info settings:\n" ));
+	Com_Printf( "Server info settings:\n" );
 	Info_Print( Cvar_InfoString( CVAR_SERVERINFO, qfalse ) );
 }
 
@@ -380,22 +358,12 @@ static void SV_Systeminfo_f( void )
 	// make sure server is running
 	if ( !com_sv_running->integer )
 	{
-		Com_Printf(_( "Server is not running.\n" ));
+		Com_Printf( "Server is not running.\n" );
 		return;
 	}
 
-	Com_Printf(_( "System info settings:\n" ));
+	Com_Printf( "System info settings:\n" );
 	Info_Print( Cvar_InfoString( CVAR_SYSTEMINFO, qfalse ) );
-}
-
-/*
-=================
-SV_KillServer
-=================
-*/
-static void SV_KillServer_f( void )
-{
-	SV_Shutdown( "killserver" );
 }
 
 /*
@@ -410,7 +378,6 @@ void SV_AddOperatorCommands( void )
 		// These commands should only be available while the server is running.
 		Cmd_AddCommand( "fieldinfo",   SV_FieldInfo_f );
 		Cmd_AddCommand( "heartbeat",   SV_Heartbeat_f );
-		Cmd_AddCommand( "killserver",  SV_KillServer_f );
 		Cmd_AddCommand( "map_restart", SV_MapRestart_f );
 		Cmd_AddCommand( "serverinfo",  SV_Serverinfo_f );
 		Cmd_AddCommand( "status",      SV_Status_f );
@@ -425,12 +392,9 @@ SV_RemoveOperatorCommands
 */
 void SV_RemoveOperatorCommands( void )
 {
-	Cmd_RemoveCommand( "dumpuser" );
 	Cmd_RemoveCommand( "fieldinfo" );
 	Cmd_RemoveCommand( "heartbeat" );
-	Cmd_RemoveCommand( "killserver" );
 	Cmd_RemoveCommand( "map_restart" );
-	Cmd_RemoveCommand( "say" );
 	Cmd_RemoveCommand( "serverinfo" );
 	Cmd_RemoveCommand( "status" );
 	Cmd_RemoveCommand( "systeminfo" );

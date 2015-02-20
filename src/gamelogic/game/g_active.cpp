@@ -478,17 +478,9 @@ void  G_TouchTriggers( gentity_t *ent )
 		}
 
 		// ignore most entities if a spectator
-		if ( ent->client->sess.spectatorState != SPECTATOR_NOT )
+		if ( ent->client->sess.spectatorState != SPECTATOR_NOT && hit->s.eType != ET_TELEPORTER )
 		{
-			if ( hit->s.eType != ET_TELEPORTER &&
-			     // this is ugly but adding a new ET_? type will
-			     // most likely cause network incompatibilities
-			     hit->touch != door_trigger_touch )
-			{
-				//check for manually triggered doors
-				manualTriggerSpectator( hit, ent );
-				continue;
-			}
+			continue;
 		}
 
 		if ( !trap_EntityContact( mins, maxs, hit ) )
@@ -515,7 +507,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 	pmove_t   pm;
 	gclient_t *client;
 	int       clientNum;
-	qboolean  attack1, following, queued;
+	qboolean  attack1, following, queued, attackReleased;
 	team_t    team;
 
 	client = ent->client;
@@ -525,6 +517,9 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 
 	attack1 = usercmdButtonPressed( client->buttons, BUTTON_ATTACK ) &&
 	          !usercmdButtonPressed( client->oldbuttons, BUTTON_ATTACK );
+
+	attackReleased = !usercmdButtonPressed( client->buttons, BUTTON_ATTACK ) &&
+		  usercmdButtonPressed( client->oldbuttons, BUTTON_ATTACK );
 
 	//if bot
 	if( ent->r.svFlags & SVF_BOT ) {
@@ -591,7 +586,9 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 		{
 			G_StopFollowing( ent );
 		}
-
+	}
+	else if ( attackReleased )
+	{
 		if ( team == TEAM_NONE )
 		{
 			G_TriggerMenu( client->ps.clientNum, MN_TEAM );
@@ -605,6 +602,7 @@ void SpectatorThink( gentity_t *ent, usercmd_t *ucmd )
 			G_TriggerMenu( client->ps.clientNum, MN_H_SPAWN );
 		}
 	}
+
 
 	// We are either not following anyone or following a spectator
 	if ( !following )
@@ -911,6 +909,50 @@ void ClientTimerActions( gentity_t *ent, int msec )
 		if ( client->ps.stats[ STAT_FUEL ] < JETPACK_FUEL_REFUEL )
 		{
 			G_FindFuel( ent );
+		}
+
+		// auto-tagging
+		{
+			gentity_t *other;
+			vec3_t origin, forward, end;
+
+			BG_GetClientViewOrigin( &client->ps, origin );
+			AngleVectors( client->ps.viewangles, forward, NULL, NULL );
+			VectorMA( origin, 65536, forward, end );
+			G_UnlaggedOn( ent, origin, 65536 );
+			other = Beacon::TagTrace( origin, end, ent->s.number, MASK_SHOT,
+			                          (team_t)client->pers.team, qtrue );
+			G_UnlaggedOff( );
+
+			if( other )
+			{
+				other->tagScore += 100;
+				other->tagScoreTime = level.time;
+				if( other->tagScore > 1000 )
+					Beacon::Tag( other, (team_t)client->pers.team, ent->s.number,
+					             ( other->s.eType == ET_BUILDABLE ) );
+
+				client->ps.stats[ STAT_TAGSCORE ] = other->tagScore;
+			}
+			else
+				client->ps.stats[ STAT_TAGSCORE ] = 0;
+		}
+
+		// remove orphaned tags for enemy structures when the structure's death was confirmed
+		{
+			gentity_t *other = NULL;
+			while ( ( other = G_IterateEntities( other ) ) )
+			{
+				if ( other->s.eType == ET_BEACON &&
+				     other->s.modelindex == BCT_TAG &&
+				     ( other->s.eFlags & EF_BC_ENEMY ) &&
+				     !other->tagAttachment &&
+				     ent->client->pers.team == other->s.generic1 &&
+				     G_LineOfSight( ent, other, CONTENTS_SOLID, true ) )
+				{
+					Beacon::Delete( other, true );
+				}
+			}
 		}
 	}
 
@@ -1511,7 +1553,7 @@ static void G_UnlaggedDetectCollisions( gentity_t *ent )
 	G_UnlaggedOn( ent, ent->client->oldOrigin, range );
 
 	trap_Trace( &tr, ent->client->oldOrigin, ent->r.mins, ent->r.maxs,
-	            ent->client->ps.origin, ent->s.number,  MASK_PLAYERSOLID );
+	            ent->client->ps.origin, ent->s.number, MASK_PLAYERSOLID, 0 );
 
 	if ( tr.entityNum >= 0 && tr.entityNum < MAX_CLIENTS )
 	{
@@ -1527,7 +1569,7 @@ static void G_UnlaggedDetectCollisions( gentity_t *ent )
  */
 static int FindAlienHealthSource( gentity_t *self )
 {
-	int       ret = 0;
+	int       ret = 0, closeTeammates = 0;
 	float     distance, minBoosterDistance = FLT_MAX;
 	qboolean  needsHealing;
 	gentity_t *ent;
@@ -1549,19 +1591,23 @@ static int FindAlienHealthSource( gentity_t *self )
 
 		distance = Distance( ent->s.origin, self->s.origin );
 
-		if ( ent->client && self != ent && distance < REGEN_BOOST_RANGE )
+		if ( ent->client && self != ent && distance < REGEN_TEAMMATE_RANGE &&
+		     G_LineOfSight( self, ent, MASK_SOLID, false ) )
 		{
+			closeTeammates++;
+
 			switch ( ent->client->ps.stats[ STAT_CLASS ] )
 			{
 				// Group healing
 				default:
-					ret |= SS_HEALING_2X;
+					ret |= ( closeTeammates > 1 ) ? SS_HEALING_4X : SS_HEALING_2X;
 					break;
 			}
 		}
 		else if ( ent->s.eType == ET_BUILDABLE && ent->spawned && ent->powered )
 		{
-			if ( ent->s.modelindex == BA_A_BOOSTER && ent->powered && distance < REGEN_BOOST_RANGE )
+			if ( ent->s.modelindex == BA_A_BOOSTER && ent->powered &&
+			     distance < REGEN_BOOSTER_RANGE )
 			{
 				// Booster healing
 				ret |= SS_HEALING_8X;
@@ -1738,18 +1784,9 @@ void ClientThink_real( gentity_t *self )
 
 	client->unlaggedTime = ucmd->serverTime;
 
-	if ( pmove_msec.integer < 8 )
+	if ( level.pmoveParams.fixed || client->pers.pmoveFixed )
 	{
-		trap_Cvar_Set( "pmove_msec", "8" );
-	}
-	else if ( pmove_msec.integer > 33 )
-	{
-		trap_Cvar_Set( "pmove_msec", "33" );
-	}
-
-	if ( pmove_fixed.integer || client->pers.pmoveFixed )
-	{
-		ucmd->serverTime = ( ( ucmd->serverTime + pmove_msec.integer - 1 ) / pmove_msec.integer ) * pmove_msec.integer;
+		ucmd->serverTime = ( ( ucmd->serverTime + level.pmoveParams.msec - 1 ) / level.pmoveParams.msec ) * level.pmoveParams.msec;
 		//if (ucmd->serverTime - client->ps.commandTime <= 0)
 		//  return;
 	}
@@ -1973,9 +2010,9 @@ void ClientThink_real( gentity_t *self )
 	pm.pointcontents  = trap_PointContents;
 	pm.debugLevel     = g_debugMove.integer;
 	pm.noFootsteps    = 0;
-	pm.pmove_fixed    = pmove_fixed.integer | client->pers.pmoveFixed;
-	pm.pmove_msec     = pmove_msec.integer;
-	pm.pmove_accurate = pmove_accurate.integer;
+	pm.pmove_fixed    = level.pmoveParams.fixed | client->pers.pmoveFixed;
+	pm.pmove_msec     = level.pmoveParams.msec;
+	pm.pmove_accurate = level.pmoveParams.accurate;
 
 	VectorCopy( client->ps.origin, client->oldOrigin );
 
@@ -2000,6 +2037,9 @@ void ClientThink_real( gentity_t *self )
 	{
 		BG_PlayerStateToEntityState( &client->ps, &self->s, qtrue );
 	}
+
+	// update attached tags right after evaluating movement
+	Beacon::UpdateTags( self );
 
 	switch ( client->ps.weapon )
 	{
@@ -2104,7 +2144,7 @@ void ClientThink_real( gentity_t *self )
 		// look for object infront of player
 		AngleVectors( client->ps.viewangles, view, NULL, NULL );
 		VectorMA( client->ps.origin, ENTITY_USE_RANGE, view, point );
-		trap_Trace( &trace, client->ps.origin, NULL, NULL, point, self->s.number, MASK_SHOT );
+		trap_Trace( &trace, client->ps.origin, NULL, NULL, point, self->s.number, MASK_SHOT, 0 );
 
 		ent = &g_entities[ trace.entityNum ];
 
@@ -2190,7 +2230,7 @@ void ClientThink( int clientNum )
 	// mark the time we got info, so we can display the phone jack if we don't get any for a while
 	ent->client->lastCmdTime = level.time;
 
-	if(!( ent->r.svFlags & SVF_BOT ) && !g_synchronousClients.integer )
+	if(!( ent->r.svFlags & SVF_BOT ) && !level.pmoveParams.synchronous )
 	{
 		ClientThink_real( ent );
 	}
@@ -2198,7 +2238,7 @@ void ClientThink( int clientNum )
 
 void G_RunClient( gentity_t *ent )
 {
-	if(!( ent->r.svFlags & SVF_BOT ) && !g_synchronousClients.integer )
+	if(!( ent->r.svFlags & SVF_BOT ) && !level.pmoveParams.synchronous )
 	{
 		return;
 	}

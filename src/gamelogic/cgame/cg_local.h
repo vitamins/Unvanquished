@@ -30,11 +30,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../../engine/client/keycodes.h"
 #include "cg_ui.h"
 
-// future imports
-#ifndef Q3_VM
-#include "../../common/Maths.h"
-#endif
-
 // The entire cgame module is unloaded and reloaded on each level change,
 // so there is no persistent data between levels on the client side.
 // If you absolutely need something stored, it can either be kept
@@ -622,6 +617,81 @@ typedef struct buildableCache_s
 
 //=================================================
 
+#define MAX_CBEACONS 50
+
+// the point of keeping the beacon data separately from centities is
+// to be able to handle virtual beacons (client-side beacons) without
+// having to add fake centities
+
+// static data belonging to a specific beacon
+// here's all beacon info that can't be deduced at will (e.g. because
+// it depends on past states)
+typedef struct
+{
+	qboolean      inuse;
+	qboolean      old;
+	qboolean      eventFired;
+
+	beaconType_t  type;
+	vec3_t        origin;
+	int           flags;
+	int           oldFlags;
+	int           ctime;
+	int           etime;
+	int           data;
+	team_t        team;
+	int           owner;
+
+	// cache
+	float         dot;
+	float         dist;
+
+	// drawing
+	vec2_t        pos;
+	float         scale;
+	float         size;
+	vec4_t        color;
+	float         t_occlusion;
+
+	qboolean      clamped;
+	vec2_t        clamp_dir;
+	qboolean      highlighted;
+} cbeacon_t;
+
+typedef struct
+{
+	// behavior
+	int           fadeIn;
+	int           fadeOut;
+	float         highlightRadius;
+	float         highlightScale;
+	float         fadeMinAlpha;
+	float         fadeMaxAlpha;
+	float         fadeMinDist; //runtime
+	float         fadeMaxDist; //runtime
+
+	// drawing
+	vec4_t        colorNeutral;
+	vec4_t        colorAlien;
+	vec4_t        colorHuman;
+	float         fadeInAlpha;
+	float         fadeInScale;
+
+	// HUD
+	float         hudSize;
+	float         hudMinSize;
+	float         hudMaxSize;
+	float         hudAlpha;
+	vec2_t        hudCenter;    //runtime
+	vec2_t        hudRect[ 2 ]; //runtime
+
+	// minimap
+	float         minimapScale;
+	float         minimapAlpha;
+} beaconsConfig_t;
+
+//======================================================================
+
 // centity_t has a direct correspondence with gentity_t in the game, but
 // only the entityState_t is directly communicated to the cgame
 typedef struct centity_s
@@ -692,14 +762,24 @@ typedef struct centity_s
 	trailSystem_t         *level2ZapTS[ LEVEL2_AREAZAP_MAX_TARGETS ];
 	int                   level2ZapTime;
 
-	trailSystem_t         *muzzleTS; //used for the tesla and reactor
+	trailSystem_t         *muzzleTS;
 	int                   muzzleTSDeathTime;
+
+	particleSystem_t      *missilePS;
+	trailSystem_t         *missileTS;
 
 	float                 radarVisibility;
 
 	qboolean              valid;
 	qboolean              oldValid;
 	struct centity_s      *nextLocation;
+
+	cbeacon_t             beacon;
+
+	// Content flags derived from the entity state
+	// HACK: This is not an exact copy of the content flags the server sees.
+	// If this is desired, it needs to be made part of entityState_t instead.
+	int                   contents;
 } centity_t;
 
 //======================================================================
@@ -987,6 +1067,13 @@ typedef enum
 	SAY_TYPE_COMMAND,
 } sayType_t;
 
+typedef struct
+{
+	int     init;
+	vec3_t  oa; // old angles
+	vec3_t  oav; // old angular velocity
+} weaponInertia_t;
+
 #define NUM_BINARY_SHADERS 256
 
 typedef struct
@@ -1071,7 +1158,6 @@ typedef struct
 	int      teamScores[ 2 ];
 	score_t  scores[ MAX_CLIENTS ];
 	qboolean showScores;
-	qboolean scoreBoardShowing;
 	int      scoreFadeTime;
 	char     killerName[ MAX_NAME_LENGTH ];
 	char     spectatorList[ MAX_STRING_CHARS ]; // list of names
@@ -1189,6 +1275,23 @@ typedef struct
 	// momentum
 	float                   momentumGained;
 	int                     momentumGainedTime;
+
+	weaponInertia_t         weaponInertia;
+
+	// beacons
+	cbeacon_t               *beacons[ MAX_CBEACONS ];
+	int                     beaconCount;
+	cbeacon_t               *highlightedBeacon;
+
+	int                     tagScoreTime;
+
+	// pmove params
+	struct {
+		int synchronous;
+		int fixed;
+		int msec;
+		int accurate;
+	} pmoveParams;
 } cg_t;
 
 typedef struct
@@ -1246,9 +1349,6 @@ typedef struct
 {
 	char *mapName;
 	char *mapLoadName;
-	char *imageName;
-	int        cinematic;
-	qhandle_t  levelShot;
 } mapInfo_t;
 
 typedef struct
@@ -1316,6 +1416,10 @@ typedef struct
 	int alienBuildList[ BA_NUM_BUILDABLES ];
 	int selectedAlienBuild;
 	int alienBuildListCount;
+
+	int beaconList[ NUM_BEACON_TYPES ];
+	int selectedBeacon;
+	int beaconListCount;
 } rocketDataSource_t;
 
 typedef struct
@@ -1397,7 +1501,6 @@ typedef struct
 	qhandle_t disconnectSound;
 
 	// sounds
-	sfxHandle_t tracerSound;
 	sfxHandle_t weaponEmptyClick;
 	sfxHandle_t selectSound;
 	sfxHandle_t footsteps[ FOOTSTEP_TOTAL ][ 4 ];
@@ -1481,6 +1584,8 @@ typedef struct
 	sfxHandle_t lCannonWarningSound;
 	sfxHandle_t lCannonWarningSound2;
 
+	sfxHandle_t rocketpodLockonSound;
+
 	qhandle_t   buildWeaponTimerPie[ 8 ];
 	qhandle_t   healthCross;
 	qhandle_t   healthCross2X;
@@ -1496,6 +1601,12 @@ typedef struct
 	qhandle_t   scopeShader;
 
 	animation_t jetpackAnims[ MAX_JETPACK_ANIMATIONS ];
+
+	qhandle_t   beaconIconArrow;
+	qhandle_t   beaconNoTarget;
+	qhandle_t   beaconTagScore;
+
+	sfxHandle_t timerBeaconExpiredSound;
 } cgMedia_t;
 
 typedef struct
@@ -1527,14 +1638,13 @@ typedef struct
 // all clients to begin playing instantly
 typedef struct
 {
-	gameState_t gameState; // gamestate from server
+	GameStateCSs gameState; // gamestate from server
 	glconfig_t  glconfig; // rendering configuration
 	float       screenXScale; // derived from glconfig
 	float       screenYScale;
 	float       screenXBias;
 	float       aspectScale;
 
-	int         serverCommandSequence; // reliable command stream counter
 	int         processedSnapshotNum; // the number of snapshots cgame has requested
 
 	// parsed from serverinfo
@@ -1594,6 +1704,8 @@ typedef struct
 
 	voice_t      *voices;
 	clientList_t ignoreList;
+
+	beaconsConfig_t  bc;
 } cgs_t;
 
 typedef struct
@@ -1714,11 +1826,9 @@ extern  vmCvar_t            cg_thirdPersonShoulderViewMode;
 extern  vmCvar_t            cg_staticDeathCam;
 extern  vmCvar_t            cg_thirdPersonPitchFollow;
 extern  vmCvar_t            cg_thirdPersonRange;
-extern  vmCvar_t            cg_stereoSeparation;
 extern  vmCvar_t            cg_lagometer;
 extern  vmCvar_t            cg_drawSpeed;
 extern  vmCvar_t            cg_maxSpeedTimeWindow;
-extern  vmCvar_t            cg_synchronousClients;
 extern  vmCvar_t            cg_stats;
 extern  vmCvar_t            cg_paused;
 extern  vmCvar_t            cg_blood;
@@ -1729,9 +1839,6 @@ extern  vmCvar_t            cg_noVoiceText;
 extern  vmCvar_t            cg_hudFiles;
 extern  vmCvar_t            cg_hudFilesEnable;
 extern  vmCvar_t            cg_smoothClients;
-extern  vmCvar_t            pmove_fixed;
-extern  vmCvar_t            pmove_accurate;
-extern  vmCvar_t            pmove_msec;
 extern  vmCvar_t            cg_timescaleFadeEnd;
 extern  vmCvar_t            cg_timescaleFadeSpeed;
 extern  vmCvar_t            cg_timescale;
@@ -1810,6 +1917,7 @@ extern vmCvar_t             cg_highPolyWeaponModels;
 extern vmCvar_t             cg_motionblur;
 extern vmCvar_t             cg_motionblurMinSpeed;
 extern vmCvar_t             ui_chatPromptColors;
+extern vmCvar_t             cg_spawnEffects;
 
 //
 // Rocket cvars
@@ -1858,7 +1966,7 @@ void     CG_TestModelPrevSkin_f( void );
 void     CG_AddBufferedSound( sfxHandle_t sfx );
 qboolean CG_CullBox(vec3_t mins, vec3_t maxs);
 qboolean CG_CullPointAndRadius(const vec3_t pt, vec_t radius);
-void     CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demoPlayback );
+void     CG_DrawActiveFrame( int serverTime, qboolean demoPlayback );
 void     CG_OffsetFirstPersonView( void );
 void     CG_OffsetThirdPersonView( void );
 void     CG_OffsetShoulderView( void );
@@ -1872,6 +1980,7 @@ void     CG_DrawPlane( vec3_t origin, vec3_t down, vec3_t right, qhandle_t shade
 void     CG_AdjustFrom640( float *x, float *y, float *w, float *h );
 void     CG_FillRect( float x, float y, float width, float height, const float *color );
 void     CG_DrawPic( float x, float y, float width, float height, qhandle_t hShader );
+void     CG_DrawRotatedPic( float x, float y, float width, float height, qhandle_t hShader, float angle );
 void     CG_DrawNoStretchPic( float x, float y, float width, float height, qhandle_t hShader );
 void     CG_DrawFadePic( float x, float y, float width, float height, vec4_t fcolor,
                          vec4_t tcolor, float amount, qhandle_t hShader );
@@ -1896,6 +2005,9 @@ void     CG_DrawSphericalCone( const vec3_t tip, const vec3_t rotation, float ra
                                qboolean a240, int customShader, const float *shaderRGBA );
 void     CG_DrawRangeMarker( rangeMarker_t rmType, const vec3_t origin, float range, const vec3_t angles, vec4_t rgba );
 
+#define CG_ExponentialFade( value, target, lambda ) \
+ExponentialFade( (value), (target), (lambda), (float)cg.frametime * 0.001 );
+
 //
 // cg_draw.c
 //
@@ -1905,7 +2017,7 @@ void CG_AddLagometerFrameInfo( void );
 void CG_AddLagometerSnapshotInfo( snapshot_t *snap );
 void CG_AddSpeed( void );
 void CG_CenterPrint( const char *str, int y, int charWidth );
-void CG_DrawActive( stereoFrame_t stereoView );
+void CG_DrawActive( void );
 void CG_OwnerDraw( rectDef_t *rect, float text_x,
                    float text_y, int ownerDraw, int ownerDrawFlags,
                    int align, int textalign, int textvalign,
@@ -1966,16 +2078,15 @@ void CG_ModelDoor( centity_t *cent );
 // cg_predict.c
 //
 
-#define MAGIC_TRACE_HACK -2
-
 void CG_BuildSolidList( void );
 int  CG_PointContents( const vec3_t point, int passEntityNum );
 void CG_Trace( trace_t *result, const vec3_t start, const vec3_t mins, const vec3_t maxs,
-               const vec3_t end, int skipNumber, int mask );
+               const vec3_t end, int skipNumber, int mask, int skipmask );
 void CG_CapTrace( trace_t *result, const vec3_t start, const vec3_t mins, const vec3_t maxs,
-                  const vec3_t end, int skipNumber, int mask );
+                  const vec3_t end, int skipNumber, int mask, int skipmask );
 void CG_BiSphereTrace( trace_t *result, const vec3_t start, const vec3_t end,
-                       const float startRadius, const float endRadius, int skipNumber, int mask );
+                       const float startRadius, const float endRadius, int skipNumber, int mask,
+                       int skipmask );
 void CG_PredictPlayerState( void );
 
 //
@@ -2064,7 +2175,7 @@ void CG_ProcessSnapshots( void );
 //
 // cg_consolecmds.c
 //
-qboolean CG_ConsoleCommand( void );
+qboolean ConsoleCommand( void );
 void     CG_InitConsoleCommands( void );
 void     CG_RequestScores( void );
 void     CG_HideScores_f( void );
@@ -2073,7 +2184,7 @@ void     CG_ShowScores_f( void );
 //
 // cg_servercmds.c
 //
-void CG_ExecuteNewServerCommands( int latestSequence );
+void CG_ExecuteServerCommands( snapshot_t* snap );
 void CG_ParseServerinfo( void );
 void CG_SetConfigValues( void );
 void CG_ShaderStateChanged( void );
@@ -2155,6 +2266,15 @@ void          CG_DestroyTestTS_f( void );
 const char *CG_TutorialText( void );
 
 //
+// cg_beacon.c
+//
+
+void          CG_LoadBeaconsConfig( void );
+void          CG_ListBeacons( void );
+qhandle_t     CG_BeaconIcon( const cbeacon_t *b, qboolean hud );
+const char    *CG_BeaconText( const cbeacon_t *b );
+
+//
 //===============================================
 
 // cg_drawCrosshair* settings
@@ -2188,7 +2308,7 @@ void       CG_PrintTime( char *buf, int bufsize, int time );
 
 void CG_Rocket_Init( void );
 void CG_Rocket_LoadHuds( void );
-void CG_Rocket_Frame( void );
+void CG_Rocket_Frame( cgClientState_t state );
 const char *CG_Rocket_GetTag();
 const char *CG_Rocket_GetAttribute( const char *attribute );
 int CG_StringToNetSource( const char *src );

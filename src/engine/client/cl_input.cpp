@@ -412,7 +412,7 @@ void CL_MouseEvent( int dx, int dy, int time )
 {
 	if ( cls.keyCatchers & KEYCATCH_CGAME )
 	{
-		VM_Call( cgvm, CG_MOUSE_EVENT, dx, dy );
+		cgvm.CGameMouseEvent(dx, dy);
 	}
 	else if ( cls.keyCatchers & KEYCATCH_UI )
 	{
@@ -642,6 +642,18 @@ void CL_MouseMove( usercmd_t *cmd )
 }
 
 /*
+
+*/
+void CL_ClearCmdButtons( void )
+{
+	for ( int i = 0; i < USERCMD_BUTTONS; ++i )
+	{
+		kb[ KB_BUTTONS + i ].active = qfalse;
+		kb[ KB_BUTTONS + i ].wasPressed = qfalse;
+	}
+}
+
+/*
 ==============
 CL_CmdButtons
 ==============
@@ -700,8 +712,6 @@ void CL_FinishMove( usercmd_t *cmd )
 	cmd->weapon = cl.cgameUserCmdValue;
 
 	cmd->flags = cl.cgameFlags;
-
-	cmd->identClient = cl.cgameMpIdentClient; // NERVE - SMF
 
 	// send the current server time so the amount of movement
 	// can be determined without allowing cheating
@@ -870,6 +880,31 @@ qboolean CL_ReadyToSendPacket( void )
 }
 
 /*
+================
+CL_WriteBinaryMessage
+================
+*/
+static void CL_WriteBinaryMessage( msg_t *msg )
+{
+	if ( !clc.binaryMessageLength )
+	{
+		return;
+	}
+
+	MSG_Uncompressed( msg );
+
+	if ( ( msg->cursize + clc.binaryMessageLength ) >= msg->maxsize )
+	{
+		clc.binaryMessageOverflowed = qtrue;
+		return;
+	}
+
+	MSG_WriteData( msg, clc.binaryMessage, clc.binaryMessageLength );
+	clc.binaryMessageLength = 0;
+	clc.binaryMessageOverflowed = qfalse;
+}
+
+/*
 ===================
 CL_WritePacket
 
@@ -899,7 +934,7 @@ void CL_WritePacket( void )
 	usercmd_t nullcmd;
 	int       packetNum;
 	int       oldPacketNum;
-	int       count, key;
+	int       count;
 
 	// don't send anything if playing back a demo
 	if ( clc.demoplaying || cls.state == CA_CINEMATIC )
@@ -1029,19 +1064,12 @@ void CL_WritePacket( void )
 		// write the command count
 		MSG_WriteByte( &buf, count );
 
-		// use the checksum feed in the key
-		key = clc.checksumFeed;
-		// also use the message acknowledge
-		key ^= clc.serverMessageSequence;
-		// also use the last acknowledged server command in the key
-		key ^= Com_HashKey( clc.serverCommands[ clc.serverCommandSequence & ( MAX_RELIABLE_COMMANDS - 1 ) ], 32 );
-
 		// write all the commands, including the predicted command
 		for ( i = 0; i < count; i++ )
 		{
 			j = ( cl.cmdNumber - count + i + 1 ) & CMD_MASK;
 			cmd = &cl.cmds[ j ];
-			MSG_WriteDeltaUsercmdKey( &buf, key, oldcmd, cmd );
+			MSG_WriteDeltaUsercmd( &buf, oldcmd, cmd );
 			oldcmd = cmd;
 		}
 	}
@@ -1060,7 +1088,9 @@ void CL_WritePacket( void )
 		Com_Printf("%i ", buf.cursize );
 	}
 
-	CL_Netchan_Transmit( &clc.netchan, &buf );
+	MSG_WriteByte( &buf, clc_EOF );
+	CL_WriteBinaryMessage( &buf );
+	Netchan_Transmit( &clc.netchan, buf.cursize, buf.data );
 
 	// clients never really should have messages large enough
 	// to fragment, but in case they do, fire them all off
@@ -1074,7 +1104,7 @@ void CL_WritePacket( void )
 			Com_Printf( "WARNING: unsent fragments (not supposed to happen!)" );
 		}
 
-		CL_Netchan_TransmitNextFragment( &clc.netchan );
+		Netchan_TransmitNextFragment( &clc.netchan );
 	}
 }
 

@@ -33,12 +33,21 @@
 #include <stdarg.h>
 #include <string.h>
 #include <vector>
+#include <functional>
 
 namespace Rocket {
 namespace Core {
 
 typedef StringBase< char > String;
 typedef std::vector< String > StringList;
+
+struct StringHash
+{
+	size_t operator() (const String& s) const
+	{
+		return s.Hash();
+	}
+};
 
 // Template specialisation of the constructor and FormatString() methods that use variable argument lists.
 template<>
@@ -50,20 +59,24 @@ ROCKETCORE_API int StringBase<char>::FormatString(StringBase<char>::size_type ma
 ROCKETCORE_API String operator+(const char* cstring, const String& string);
 
 // partial specialization follows
+
+/* !!! CHANGING THIS METHOD BREAKS ABI COMPATIBILITY DUE TO INLINING !!! */
 template<>
-ROCKETCORE_API inline bool StringBase< char >::operator<(const char * compare) const
+ROCKETCORE_API_INLINE bool StringBase< char >::operator<(const char * compare) const
 {
 	return strcmp( value, compare ) < 0;
 }
 
+/* !!! CHANGING THIS METHOD BREAKS ABI COMPATIBILITY DUE TO INLINING !!! */
 template<>
-ROCKETCORE_API inline bool StringBase< char >::operator==(const char * compare) const
+ROCKETCORE_API_INLINE bool StringBase< char >::operator==(const char * compare) const
 {
 	return strcmp( value, compare ) == 0;
 }
 
+/* !!! CHANGING THIS METHOD BREAKS ABI COMPATIBILITY DUE TO INLINING !!! */
 template<>
-ROCKETCORE_API inline bool StringBase< char >::operator!=(const char * compare) const
+ROCKETCORE_API_INLINE bool StringBase< char >::operator!=(const char * compare) const
 {
 	return strcmp( value, compare ) != 0;
 }

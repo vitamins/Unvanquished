@@ -474,21 +474,31 @@ new information out of it.  This will happen at every
 gamestate, and possibly during gameplay.
 ==================
 */
-void CL_PurgeCache( void );
-
 void CL_SystemInfoChanged( void )
 {
-	char       *systemInfo;
+	const char *systemInfo;
 	const char *s;
 	char       key[ BIG_INFO_KEY ];
 	char       value[ BIG_INFO_VALUE ];
 
-	systemInfo = cl.gameState.stringData + cl.gameState.stringOffsets[ CS_SYSTEMINFO ];
+	systemInfo = cl.gameState[ CS_SYSTEMINFO ].c_str();
 	// NOTE TTimo:
 	// when the serverId changes, any further messages we send to the server will use this new serverId
 	// show_bug.cgi?id=475
 	// in some cases, outdated cp commands might get sent with this news serverId
 	cl.serverId = atoi( Info_ValueForKey( systemInfo, "sv_serverid" ) );
+
+	// load paks sent by the server, but not if we are running a local server
+	if (!com_sv_running->integer) {
+		FS::PakPath::ClearPaks();
+		if (!FS_LoadServerPaks(Info_ValueForKey(systemInfo, "sv_paks"), clc.demoplaying)) {
+			if (!cl_allowDownload->integer) {
+				Com_Error(ERR_DROP, "Client is missing paks but downloads are disabled");
+			} else if (clc.demoplaying) {
+				Com_Error(ERR_DROP, "Client is missing paks needed by the demo");
+			}
+		}
+	}
 
 	// don't set any vars when playing a demo
 	if ( clc.demoplaying )
@@ -500,13 +510,6 @@ void CL_SystemInfoChanged( void )
 	s = Info_ValueForKey( systemInfo, "sv_voip" );
 	clc.voipEnabled = atoi( s );
 #endif
-
-	// load paks sent by the server, but not if we are running a local server
-	if (!com_sv_running->integer) {
-		FS::PakPath::ClearPaks();
-		if (!FS_LoadServerPaks( Info_ValueForKey( systemInfo, "sv_paks" ) ) && !cl_allowDownload->integer)
-			Com_Error(ERR_DROP, "Client is missing paks but downloads are disabled");
-	}
 
 	// scan through all the variables in the systeminfo and locally set cvars to match
 	s = systemInfo;
@@ -536,7 +539,6 @@ void CL_ParseGamestate( msg_t *msg )
 	int           newnum;
 	entityState_t nullstate;
 	int           cmd;
-	char          *s;
 
 	Con_Close();
 
@@ -549,8 +551,6 @@ void CL_ParseGamestate( msg_t *msg )
 	clc.serverCommandSequence = MSG_ReadLong( msg );
 
 	// parse all the configstrings and baselines
-	cl.gameState.dataCount = 1; // leave a 0 at the beginning for uninitialized configstrings
-
 	while ( 1 )
 	{
 		cmd = MSG_ReadByte( msg );
@@ -562,8 +562,6 @@ void CL_ParseGamestate( msg_t *msg )
 
 		if ( cmd == svc_configstring )
 		{
-			int len;
-
 			i = MSG_ReadShort( msg );
 
 			if ( i < 0 || i >= MAX_CONFIGSTRINGS )
@@ -571,18 +569,9 @@ void CL_ParseGamestate( msg_t *msg )
 				Com_Error( ERR_DROP, "configstring > MAX_CONFIGSTRINGS" );
 			}
 
-			s = MSG_ReadBigString( msg );
-			len = strlen( s );
-
-			if ( len + 1 + cl.gameState.dataCount > MAX_GAMESTATE_CHARS )
-			{
-				Com_Error( ERR_DROP, "MAX_GAMESTATE_CHARS exceeded" );
-			}
-
-			// append it to the gameState string buffer
-			cl.gameState.stringOffsets[ i ] = cl.gameState.dataCount;
-			memcpy( cl.gameState.stringData + cl.gameState.dataCount, s, len + 1 );
-			cl.gameState.dataCount += len + 1;
+            const char* str = MSG_ReadBigString( msg );
+            std::string s = str;
+			cl.gameState[i] = str;
 		}
 		else if ( cmd == svc_baseline )
 		{
@@ -635,7 +624,7 @@ void CL_ParseDownload( msg_t *msg )
 
 	if ( !*cls.downloadTempName )
 	{
-		Com_Printf("%s", _( "Server sending download, but no download was requested\n" ));
+		Com_Printf( "Server sending download, but no download was requested\n" );
 		CL_AddReliableCommand( "stopdl" );
 		return;
 	}
@@ -664,7 +653,7 @@ void CL_ParseDownload( msg_t *msg )
 			// make sure the server is not trying to redirect us again on a bad checksum
 			if ( strstr( clc.badChecksumList, va( "@%s", cls.originalDownloadName ) ) )
 			{
-				Com_Printf(_( "refusing redirect to %s by server (bad checksum)\n"), cls.downloadName );
+				Com_Printf( "refusing redirect to %s by server (bad checksum)\n", cls.downloadName );
 				CL_AddReliableCommand( "wwwdl fail" );
 				clc.bWWWDlAborting = qtrue;
 				return;
@@ -678,7 +667,7 @@ void CL_ParseDownload( msg_t *msg )
 				// we count on server sending us a gamestate to start up clean again
 				CL_AddReliableCommand( "wwwdl fail" );
 				clc.bWWWDlAborting = qtrue;
-				Com_Printf(_( "Failed to initialize download for '%s'\n"), cls.downloadName );
+				Com_Printf( "Failed to initialize download for '%s'\n", cls.downloadName );
 			}
 
 			// Check for a disconnected download
@@ -737,7 +726,7 @@ void CL_ParseDownload( msg_t *msg )
 
 		if ( !clc.download )
 		{
-			Com_Printf(_( "Could not create %s\n"), cls.downloadTempName );
+			Com_Printf( "Could not create %s\n", cls.downloadTempName );
 			CL_AddReliableCommand( "stopdl" );
 			CL_NextDownload();
 			return;

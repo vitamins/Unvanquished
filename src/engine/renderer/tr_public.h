@@ -127,7 +127,7 @@ typedef struct
 	                          qboolean dirty );
 	void ( *UploadCinematic )( int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty );
 
-	void ( *BeginFrame )( stereoFrame_t stereoFrame );
+	void ( *BeginFrame )( void );
 
 	// if the pointers are not NULL, timing info will be returned
 	void ( *EndFrame )( int *frontEndMsec, int *backEndMsec );
@@ -243,7 +243,6 @@ typedef struct
 	int ( *Cmd_Argc )( void );
 	char            *( *Cmd_Argv )( int i );
 
-	void ( *Cmd_ExecuteText )( int exec_when, const char *text );
 	const char *( *Cmd_QuoteString )( const char *text );
 
 	int ( *Cvar_VariableIntegerValue )( const char *var_name );

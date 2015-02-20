@@ -44,7 +44,7 @@ void Rocket_InjectMouseMotion( int x, int y ) {}
 void Rocket_LoadDocument( const char *path ) {}
 void Rocket_LoadCursor( const char *path ) {}
 void Rocket_DocumentAction( const char *name, const char *action ) {}
-qboolean Rocket_GetEvent( void ) { return false; }
+qboolean Rocket_GetEvent(std::string& ) { return false; }
 void Rocket_DeleteEvent( void ) {}
 void Rocket_RegisterDataSource( const char *name ) {}
 void Rocket_DSAddRow( const char *name, const char *table, const char *data ) {}
@@ -67,7 +67,7 @@ void Rocket_GetElementAbsoluteOffset( float *x, float *y ) {}
 void Rocket_SetClass( const char *in, qboolean activate ) {}
 void Rocket_SetPropertyById( const char *id, const char *property, const char *value ) {}
 void Rocket_SetActiveContext( int catcher ) {}
-void Rocket_AddConsoleText( void ) {}
+void Rocket_AddConsoleText( Str::StringRef ) {}
 void Rocket_InitializeHuds( int size ) {}
 void Rocket_LoadUnit( const char *path ) {}
 void Rocket_AddUnitToHud( int weapon, const char *id ) {}
@@ -83,3 +83,4 @@ void Rocket_ClearText( void ) {}
 void Rocket_RegisterProperty( const char *name, const char *defaultValue, qboolean inherited, qboolean force_layout, const char *parseAs ) {}
 void Rocket_ShowScoreboard( const char *name, bool show ) {}
 void Rocket_SetDataSelectIndex( int index ) {}
+void Rocket_LoadFont( const char *font ) {}

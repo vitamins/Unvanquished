@@ -191,6 +191,7 @@ struct gentity_s
 	 */
 	float        mineRate;
 	float        mineEfficiency;
+	float        acquiredBuildPoints;
 
 	/**
 	 * Alien buildables can burn, which is a lot of fun if they are close.
@@ -274,6 +275,7 @@ struct gentity_s
 
 	int          lastHealth;
 	int          health;
+	float        deconHealthFrac;
 
 	float        speed;
 
@@ -388,16 +390,23 @@ struct gentity_s
 	vec3_t      buildableAim; // aim vector for buildables
 
 	// turret
-	//qboolean    turretHasFastLoader; // a turret upgrade (currently unused)
 	int         turretNextShot;
-	int         turretSuccessiveShots;
-	int         turretLastShotAtTarget;
-	int         turretLastSeenATarget;
+	int         turretLastLOSToTarget;
+	int         turretLastValidTargetTime;
+	int         turretLastTargetSearch;
 	int         turretLastHeadMove;
 	int         turretCurrentDamage;
 	vec3_t      turretDirToTarget;
 	vec3_t      turretBaseDir;
 	qboolean    turretDisabled;
+	int         turretSafeModeCheckTime;
+	qboolean    turretSafeMode;
+	int         turretPrepareTime; // when the turret can start locking on and/or firing
+	int         turretLockonTime;  // when the turret can start firing
+
+	// spiker
+	int         spikerRestUntil;
+	float       spikerLastScoring;
 
 	vec4_t      animation; // animated map objects
 
@@ -412,6 +421,11 @@ struct gentity_s
 
 	qhandle_t   obstacleHandle;
 	botMemory_t *botMind;
+
+	gentity_t   *alienTag, *humanTag;
+	gentity_t   **tagAttachment;
+	int         tagScore;
+	int         tagScoreTime;
 };
 
 /**
@@ -669,6 +683,8 @@ struct level_locals_s
 	// store latched cvars here that we want to get at often
 	int      maxclients;
 
+	bool     inClient;
+
 	int      framenum;
 	int      time; // time the map was first started in milliseconds (map restart will update startTime)
 	int      previousTime; // so movers can back up when blocked
@@ -779,6 +795,8 @@ struct level_locals_s
 		int              numSamples;
 		int              numAliveClients;
 		float            buildPoints;
+		float            acquiredBuildPoints;
+		float            mainStructAcquiredBP;
 		float            mineEfficiency;
 		int              kills;
 		spawnQueue_t     spawnQueue;
@@ -786,6 +804,14 @@ struct level_locals_s
 		float            momentum;
 		int              layoutBuildPoints;
 	} team[ NUM_TEAMS ];
+
+	struct {
+		int synchronous;
+		int fixed;
+		int msec;
+		int accurate;
+		bool initialized;
+	} pmoveParams;
 };
 
 struct commands_s

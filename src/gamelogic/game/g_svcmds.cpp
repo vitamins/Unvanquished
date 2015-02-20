@@ -89,7 +89,7 @@ void Svcmd_EntityFire_f( void )
 }
 
 
-STATIC_INLINE void PrintEntityOverviewLine( gentity_t *entity )
+static inline void PrintEntityOverviewLine( gentity_t *entity )
 {
 	G_Printf( "%3i: %15s/" S_COLOR_CYAN "%-24s" S_COLOR_WHITE "%s%s\n",
 			entity->s.number, Com_EntityTypeName( entity->s.eType ), entity->classname,
@@ -381,7 +381,7 @@ static void Svcmd_LayoutLoad_f( void )
 	s = ConcatArgs( 1 );
 	Q_strncpyz( layouts, s, sizeof( layouts ) );
 	trap_Cvar_Set( "g_layouts", layouts );
-	trap_SendConsoleCommand( EXEC_APPEND, "map_restart\n" );
+	trap_SendConsoleCommand( "map_restart\n" );
 	level.restarted = qtrue;
 }
 
@@ -683,7 +683,7 @@ static void Svcmd_G_AdvanceMapRotation_f( void )
 static const struct svcmd
 {
 	const char *cmd;
-	qboolean dedicated;
+	qboolean conflicts; //With a command registered by cgame
 	void ( *function )( void );
 } svcmds[] =
 {
@@ -740,15 +740,15 @@ qboolean  ConsoleCommand( void )
 			return qtrue;
 		}
 
-		if ( g_dedicated.integer )
+		if ( level.inClient )
 		{
-			G_Printf( "unknown command: %s\n", cmd );
+			G_Printf( "unknown command server console command: %s\n", cmd );
 		}
 
 		return qfalse;
 	}
 
-	if ( command->dedicated && !g_dedicated.integer )
+	if ( command->conflicts && level.inClient )
 	{
 		return qfalse;
 	}
@@ -757,13 +757,17 @@ qboolean  ConsoleCommand( void )
 	return qtrue;
 }
 
+void CompleteCommand(int)
+{
+}
+
 void G_RegisterCommands( void )
 {
 	int i;
 
 	for ( i = 0; i < ARRAY_LEN( svcmds ); i++ )
 	{
-		if ( svcmds[ i ].dedicated && !g_dedicated.integer )
+		if ( svcmds[ i ].conflicts && level.inClient )
 		{
 			continue;
 		}
@@ -780,7 +784,7 @@ void G_UnregisterCommands( void )
 
 	for ( i = 0; i < ARRAY_LEN( svcmds ); i++ )
 	{
-		if ( svcmds[ i ].dedicated && !g_dedicated.integer )
+		if ( svcmds[ i ].conflicts && level.inClient )
 		{
 			continue;
 		}

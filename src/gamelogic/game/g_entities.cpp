@@ -145,15 +145,25 @@ void G_FreeEntity( gentity_t *entity )
 	}
 
 	if ( g_debugEntities.integer > 2 )
+	{
 		G_Printf(S_DEBUG "Freeing Entity %s\n", etos(entity));
+	}
 
 	if ( entity->obstacleHandle )
 	{
 		trap_BotRemoveObstacle( entity->obstacleHandle );
 	}
 
-	if( entity->eclass && entity->eclass->instanceCounter > 0)
+	if( entity->eclass && entity->eclass->instanceCounter > 0 )
+	{
 		entity->eclass->instanceCounter--;
+	}
+
+	if ( entity->s.eType == ET_BEACON && entity->s.modelindex == BCT_TAG )
+	{
+		// It's possible that this happened before, but we need to be sure.
+		BaseClustering::Remove(entity);
+	}
 
 	memset( entity, 0, sizeof( *entity ) );
 	entity->classname = "freent";
@@ -318,6 +328,11 @@ gentity_t *G_IterateEntities( gentity_t *entity, const char *classname, qboolean
 	return NULL;
 }
 
+gentity_t *G_IterateEntities( gentity_t *entity )
+{
+	return G_IterateEntities( entity, NULL, qtrue, 0, NULL );
+}
+
 gentity_t *G_IterateEntitiesOfClass( gentity_t *entity, const char *classname )
 {
 	return G_IterateEntities( entity, classname, qtrue, 0, NULL );
@@ -467,19 +482,11 @@ gentity chain handling
 /**
  * a call made by the world, mostly by hard coded calls due to world-events
  */
-#ifdef Q3_VM
-const gentityCall_t WORLD_CALL = { NULL, &g_entities[ ENTITYNUM_WORLD ], &g_entities[ ENTITYNUM_WORLD ] };
-#else
 #define WORLD_CALL gentityCall_t{ NULL, &g_entities[ ENTITYNUM_WORLD ], &g_entities[ ENTITYNUM_WORLD ] }
-#endif
 /**
  * a non made call
  */
-#ifdef Q3_VM
-const gentityCall_t NULL_CALL = { NULL, &g_entities[ ENTITYNUM_NONE ], &g_entities[ ENTITYNUM_NONE ] };
-#else
 #define NULL_CALL gentityCall_t{ NULL, &g_entities[ ENTITYNUM_NONE ], &g_entities[ ENTITYNUM_NONE ] }
-#endif
 
 typedef struct
 {
@@ -915,7 +922,7 @@ qboolean G_IsVisible( gentity_t *start, gentity_t *end, int contents )
 	trace_t trace;
 
 	trap_Trace( &trace, start->s.pos.trBase, NULL, NULL, end->s.pos.trBase,
-	            start->s.number, contents );
+	            start->s.number, contents, 0 );
 
 	return trace.fraction >= 1.0f || trace.entityNum == end - g_entities;
 }

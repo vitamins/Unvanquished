@@ -32,7 +32,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <GL/glew.h>
 
+#define DYN_BUFFER_SIZE ( 4 * 1024 * 1024 )
+#define DYN_BUFFER_SEGMENTS 4
 #define BUFFER_OFFSET(i) ((char *)NULL + ( i ))
+
+typedef int8_t   i8vec4_t[ 4 ];
+typedef uint8_t  u8vec4_t[ 4 ];
+typedef int16_t  i16vec4_t [ 4 ];
+typedef uint16_t u16vec4_t [ 4 ];
+typedef int16_t  i16vec2_t [ 2 ];
+typedef uint16_t u16vec2_t [ 2 ];
 
 // GL conversion helpers
 static inline float unorm8ToFloat(byte unorm8) {
@@ -43,13 +52,79 @@ static inline byte floatToUnorm8(float f) {
 	// has been changed from round to nearest to round to 0 !
 	return lrintf(f * 255.0f);
 }
-static inline float snorm8ToFloat(byte snorm8) {
-	return MAX( (snorm8 - 128) * (1.0f / 127.0f), -1.0f);
+static inline float snorm8ToFloat(int8_t snorm8) {
+	return MAX( snorm8 * (1.0f / 127.0f), -1.0f);
 }
-static inline byte floatToSnorm8(float f) {
+static inline int8_t floatToSnorm8(float f) {
 	// don't use Q_ftol here, as the semantics of Q_ftol
 	// has been changed from round to nearest to round to 0 !
-	return lrintf(f * 127.0f) + 128;
+	return lrintf(f * 127.0f);
+}
+
+static inline float unorm16ToFloat(uint16_t unorm16) {
+	return unorm16 * (1.0f / 65535.0f);
+}
+static inline uint16_t floatToUnorm16(float f) {
+	// don't use Q_ftol here, as the semantics of Q_ftol
+	// has been changed from round to nearest to round to 0 !
+	return lrintf(f * 65535.0f);
+}
+static inline float snorm16ToFloat(int16_t snorm16) {
+	return MAX( snorm16 * (1.0f / 32767.0f), -1.0f);
+}
+static inline int16_t floatToSnorm16(float f) {
+	// don't use Q_ftol here, as the semantics of Q_ftol
+	// has been changed from round to nearest to round to 0 !
+	return lrintf(f * 32767.0f);
+}
+
+
+static inline void floatToUnorm8( const vec4_t in, u8vec4_t out )
+{
+	out[ 0 ] = floatToUnorm8( in[ 0 ] );
+	out[ 1 ] = floatToUnorm8( in[ 1 ] );
+	out[ 2 ] = floatToUnorm8( in[ 2 ] );
+	out[ 3 ] = floatToUnorm8( in[ 3 ] );
+}
+
+static inline void unorm8ToFloat( const u8vec4_t in, vec4_t out )
+{
+	out[ 0 ] = unorm8ToFloat( in[ 0 ] );
+	out[ 1 ] = unorm8ToFloat( in[ 1 ] );
+	out[ 2 ] = unorm8ToFloat( in[ 2 ] );
+	out[ 3 ] = unorm8ToFloat( in[ 3 ] );
+}
+
+static inline void floatToSnorm16( const vec4_t in, i16vec4_t out )
+{
+	out[ 0 ] = floatToSnorm16( in[ 0 ] );
+	out[ 1 ] = floatToSnorm16( in[ 1 ] );
+	out[ 2 ] = floatToSnorm16( in[ 2 ] );
+	out[ 3 ] = floatToSnorm16( in[ 3 ] );
+}
+
+static inline void snorm16ToFloat( const i16vec4_t in, vec4_t out )
+{
+	out[ 0 ] = snorm16ToFloat( in[ 0 ] );
+	out[ 1 ] = snorm16ToFloat( in[ 1 ] );
+	out[ 2 ] = snorm16ToFloat( in[ 2 ] );
+	out[ 3 ] = snorm16ToFloat( in[ 3 ] );
+}
+
+static inline int16_t floatToHalf( float in ) {
+	static float scale = powf(2.0f, 15 - 127);
+	floatint_t fi;
+
+	fi.f = in * scale;
+	
+	return (int16_t)(((fi.ui & 0x80000000) >> 16) | ((fi.ui & 0x0fffe000) >> 13));
+}
+static inline float halfToFloat( int16_t in ) {
+	static float scale = powf(2.0f, 127 - 15);
+	floatint_t fi;
+
+	fi.ui = (((unsigned int)in & 0x8000) << 16) | (((unsigned int)in & 0x7fff) << 13);
+	return fi.f * scale;
 }
 
 // everything that is needed by the backend needs
@@ -62,8 +137,6 @@ static inline byte floatToSnorm8(float f) {
 
 #define MAX_SHADER_TABLES     1024
 #define MAX_SHADER_STAGES     16
-
-#define MAX_OCCLUSION_QUERIES 4096
 
 #define MAX_FBOS              64
 
@@ -82,6 +155,18 @@ static inline byte floatToSnorm8(float f) {
 // shouldn't matter
 #define MAX_VISTESTS          256
 
+#define MAX_MOD_KNOWN      1024
+#define MAX_ANIMATIONFILES 4096
+
+#define MAX_LIGHTMAPS      256
+#define MAX_SKINS          1024
+
+#define MAX_DRAWSURFS      0x10000
+#define DRAWSURF_MASK      ( MAX_DRAWSURFS - 1 )
+
+#define MAX_INTERACTIONS   MAX_DRAWSURFS * 8
+#define INTERACTION_MASK   ( MAX_INTERACTIONS - 1 )
+
 	typedef enum
 	{
 	  RSPEEDS_GENERAL = 1,
@@ -91,7 +176,6 @@ static inline byte floatToSnorm8(float f) {
 	  RSPEEDS_SHADOWCUBE_CULLING,
 	  RSPEEDS_FOG,
 	  RSPEEDS_FLARES,
-	  RSPEEDS_OCCLUSION_QUERIES,
 	  RSPEEDS_SHADING_TIMES,
 	  RSPEEDS_CHC,
 	  RSPEEDS_NEAR_FAR,
@@ -314,13 +398,6 @@ static inline byte floatToSnorm8(float f) {
 
 		int8_t       shadowLOD; // Level of Detail for shadow mapping
 
-		qboolean                  clipsNearPlane;
-
-		qboolean                  noOcclusionQueries;
-		uint32_t                  occlusionQueryObject;
-		uint32_t                  occlusionQuerySamples;
-		link_t                    multiQuery; // CHC++: list of all nodes that are used by the same occlusion query
-
 		int                       restrictInteractionFirst;
 		int                       restrictInteractionLast;
 
@@ -377,12 +454,6 @@ static inline byte floatToSnorm8(float f) {
 		vec3_t       localBounds[ 2 ];
 		vec3_t       worldBounds[ 2 ]; // only set when not completely culled. use them for light interactions
 		vec3_t       worldCorners[ 8 ];
-
-		// GPU occlusion culling
-		qboolean noOcclusionQueries;
-		uint32_t occlusionQueryObject;
-		uint32_t occlusionQuerySamples;
-		link_t   multiQuery; // CHC++: list of all nodes that are used by the same occlusion query
 	} trRefEntity_t;
 
 	typedef struct
@@ -521,21 +592,15 @@ static inline byte floatToSnorm8(float f) {
 	{
 		ATTR_INDEX_POSITION = 0,
 		ATTR_INDEX_TEXCOORD,
-		ATTR_INDEX_LIGHTCOORD,
-		ATTR_INDEX_TANGENT,
-		ATTR_INDEX_BINORMAL,
-		ATTR_INDEX_NORMAL,
+		ATTR_INDEX_QTANGENT,
 		ATTR_INDEX_COLOR,
 
 		// GPU vertex skinning
-		ATTR_INDEX_BONE_INDEXES,
-		ATTR_INDEX_BONE_WEIGHTS,
+		ATTR_INDEX_BONE_FACTORS,
 
 		// GPU vertex animations
 		ATTR_INDEX_POSITION2,
-		ATTR_INDEX_TANGENT2,
-		ATTR_INDEX_BINORMAL2,
-		ATTR_INDEX_NORMAL2,
+		ATTR_INDEX_QTANGENT2,
 		ATTR_INDEX_MAX
 	};
 
@@ -544,49 +609,31 @@ static inline byte floatToSnorm8(float f) {
 	{
 		"attr_Position",
 		"attr_TexCoord0",
-		"attr_TexCoord1",
-		"attr_Tangent",
-		"attr_Binormal",
-		"attr_Normal",
+		"attr_QTangent",
 		"attr_Color",
-		"attr_BoneIndexes",
-		"attr_BoneWeights",
+		"attr_BoneFactors",
 		"attr_Position2",
-		"attr_Tangent2",
-		"attr_Binormal2",
-		"attr_Normal2"
+		"attr_QTangent2"
 	};
 
 	enum
 	{
 	  ATTR_POSITION       = BIT( ATTR_INDEX_POSITION ),
 	  ATTR_TEXCOORD       = BIT( ATTR_INDEX_TEXCOORD ),
-	  ATTR_LIGHTCOORD     = BIT( ATTR_INDEX_LIGHTCOORD ),
-	  ATTR_TANGENT        = BIT( ATTR_INDEX_TANGENT ),
-	  ATTR_BINORMAL       = BIT( ATTR_INDEX_BINORMAL ),
-	  ATTR_NORMAL         = BIT( ATTR_INDEX_NORMAL ),
+	  ATTR_QTANGENT       = BIT( ATTR_INDEX_QTANGENT ),
 	  ATTR_COLOR          = BIT( ATTR_INDEX_COLOR ),
 
-	  ATTR_BONE_INDEXES   = BIT( ATTR_INDEX_BONE_INDEXES ),
-	  ATTR_BONE_WEIGHTS   = BIT( ATTR_INDEX_BONE_WEIGHTS ),
+	  ATTR_BONE_FACTORS   = BIT( ATTR_INDEX_BONE_FACTORS ),
 
 	  // for .md3 interpolation
 	  ATTR_POSITION2      = BIT( ATTR_INDEX_POSITION2 ),
-	  ATTR_TANGENT2       = BIT( ATTR_INDEX_TANGENT2 ),
-	  ATTR_BINORMAL2      = BIT( ATTR_INDEX_BINORMAL2 ),
-	  ATTR_NORMAL2        = BIT( ATTR_INDEX_NORMAL2 ),
+	  ATTR_QTANGENT2      = BIT( ATTR_INDEX_QTANGENT2 ),
 
-	  ATTR_INTERP_BITS = ATTR_POSITION2 | ATTR_TANGENT2 | ATTR_BINORMAL2 | ATTR_NORMAL2,
-
-	  // FIXME XBSP format with ATTR_LIGHTDIRECTION
-	  //ATTR_DEFAULT = ATTR_POSITION | ATTR_TEXCOORD | ATTR_TANGENT | ATTR_BINORMAL | ATTR_COLOR,
+	  ATTR_INTERP_BITS = ATTR_POSITION2 | ATTR_QTANGENT2,
 
 	  ATTR_BITS = ATTR_POSITION |
 	              ATTR_TEXCOORD |
-	              ATTR_LIGHTCOORD |
-	              ATTR_TANGENT |
-	              ATTR_BINORMAL |
-	              ATTR_NORMAL |
+	              ATTR_QTANGENT |
 	              ATTR_COLOR // |
 
 	              //ATTR_BONE_INDEXES |
@@ -607,27 +654,23 @@ static inline byte floatToSnorm8(float f) {
 	typedef enum
 	{
 		VBO_LAYOUT_VERTEX_ANIMATION,
-		VBO_LAYOUT_INTERLEAVED,
-		VBO_LAYOUT_SEPERATE
+		VBO_LAYOUT_SKELETAL,
+		VBO_LAYOUT_STATIC,
+		VBO_LAYOUT_POSITION
 	} vboLayout_t;
 
 	typedef struct
 	{
 		vec3_t *xyz;
-		vec3_t *tangent;
-		vec3_t *binormal;
-		vec3_t *normal;
-		int numFrames;
-
-		vec4_t *color;
-		vec2_t *st;
-		vec2_t *lightCoord;
-		vec3_t *ambientLight;
-		vec3_t *directedLight;
-		vec3_t *lightDir;
+		i16vec4_t *qtangent;
+		u8vec4_t *color;
+		union { i16vec2_t *st; i16vec4_t *stpq; };
 		int    (*boneIndexes)[ 4 ];
 		vec4_t *boneWeights;
+
+		int	numFrames;
 		int     numVerts;
+		qboolean noLightCoords;
 	} vboData_t;
 
 	typedef struct VBO_s
@@ -721,7 +764,6 @@ static inline byte floatToSnorm8(float f) {
 	  GF_TRIANGLE,
 	  GF_SAWTOOTH,
 	  GF_INVERSE_SAWTOOTH,
-
 	  GF_NOISE
 	} genFunc_t;
 
@@ -735,14 +777,6 @@ static inline byte floatToSnorm8(float f) {
 	  DEFORM_PROJECTION_SHADOW,
 	  DEFORM_AUTOSPRITE,
 	  DEFORM_AUTOSPRITE2,
-	  DEFORM_TEXT0,
-	  DEFORM_TEXT1,
-	  DEFORM_TEXT2,
-	  DEFORM_TEXT3,
-	  DEFORM_TEXT4,
-	  DEFORM_TEXT5,
-	  DEFORM_TEXT6,
-	  DEFORM_TEXT7,
 	  DEFORM_SPRITE,
 	  DEFORM_FLARE
 	} deform_t;
@@ -1114,6 +1148,9 @@ static inline byte floatToSnorm8(float f) {
 		qboolean        privatePolygonOffset; // set for decals and other items that must be offset
 		float           privatePolygonOffsetValue;
 
+		qboolean        hasDepthFade; // for soft particles
+		float           depthFadeValue;
+
 		expression_t    refractionIndexExp;
 
 		expression_t    specularExponentMin;
@@ -1366,8 +1403,6 @@ static inline byte floatToSnorm8(float f) {
 		vec3_t        viewaxis[ 3 ]; // transformation matrix
 		vec3_t        blurVec;
 
-		stereoFrame_t stereoFrame;
-
 		int           time; // time in milliseconds for shader effects and other time dependent rendering issues
 		int           rdflags; // RDF_NOWORLDMODEL, etc
 
@@ -1376,9 +1411,6 @@ static inline byte floatToSnorm8(float f) {
 		qboolean areamaskModified; // qtrue if areamask changed since last scene
 
 		float    floatTime; // tr.refdef.time / 1000.0
-
-		// text messages for deform text shaders
-		char                    text[ MAX_RENDER_STRINGS ][ MAX_RENDER_STRING_LENGTH ];
 
 		int                     numEntities;
 		trRefEntity_t           *entities;
@@ -1527,8 +1559,6 @@ static inline byte floatToSnorm8(float f) {
 
 		int                  numInteractions;
 		struct interaction_s *interactions;
-
-		stereoFrame_t        stereoFrame;
 	} viewParms_t;
 
 	/*
@@ -1571,14 +1601,84 @@ static inline byte floatToSnorm8(float f) {
 	  SF_MAX = 0x7fffffff // partially (together, fully) ensures that sizeof(surfaceType_t) == sizeof(int)
 	} surfaceType_t;
 
+
+	// drawSurf components are packed into a single 64bit integer for
+	// efficient sorting
+	// sort by:
+	// 1. shaderNum
+	// 2. lightmapNum
+	// 3. entityNum
+	// 4. fogNum
+	// 5. index
+
+	static const uint64_t SORT_INDEX_BITS = 16;
+	static const uint64_t SORT_FOGNUM_BITS = 13;
+	static const uint64_t SORT_ENTITYNUM_BITS = 10;
+	static const uint64_t SORT_LIGHTMAP_BITS = 9;
+	static const uint64_t SORT_SHADER_BITS = 16;
+
+	static_assert( SORT_SHADER_BITS +
+		SORT_LIGHTMAP_BITS +
+		SORT_ENTITYNUM_BITS +
+		SORT_FOGNUM_BITS +
+		SORT_INDEX_BITS == 64, "invalid number of drawSurface sort bits" );
+
+	static const uint64_t SORT_FOGNUM_SHIFT = SORT_INDEX_BITS;
+	static const uint64_t SORT_ENTITYNUM_SHIFT = SORT_FOGNUM_BITS + SORT_FOGNUM_SHIFT;
+	static const uint64_t SORT_LIGHTMAP_SHIFT = SORT_ENTITYNUM_BITS + SORT_ENTITYNUM_SHIFT;
+	static const uint64_t SORT_SHADER_SHIFT = SORT_LIGHTMAP_BITS + SORT_LIGHTMAP_SHIFT;
+
+#define MASKBITS( b ) ( 1 << b ) - 1
+	static const uint32_t SORT_INDEX_MASK = MASKBITS( SORT_INDEX_BITS );
+	static const uint32_t SORT_FOGNUM_MASK = MASKBITS( SORT_FOGNUM_BITS );
+	static const uint32_t SORT_ENTITYNUM_MASK = MASKBITS( SORT_ENTITYNUM_BITS );
+	static const uint32_t SORT_LIGHTMAP_MASK = MASKBITS( SORT_LIGHTMAP_BITS );
+	static const uint32_t SORT_SHADER_MASK = MASKBITS( SORT_SHADER_BITS );
+
+	static_assert( SORT_INDEX_MASK >= MAX_DRAWSURFS - 1, "not enough index bits" );
+
+	// need space for 0 fog (no fog), in addition to MAX_MAP_FOGS
+	static_assert( SORT_FOGNUM_MASK >= MAX_MAP_FOGS, "not enough fognum bits" );
+
+	// need space for tr.worldEntity, in addition to MAX_REF_ENTITIES
+	static_assert( SORT_ENTITYNUM_MASK >= MAX_REF_ENTITIES, "not enough entity bits" );
+
+	// need space for -1 lightmap (no lightmap) in addition to MAX_LIGHTMAPS
+	static_assert( SORT_LIGHTMAP_MASK >= MAX_LIGHTMAPS, "not enough lightmap bits" );
+
+	static_assert( SORT_SHADER_MASK >= MAX_SHADERS - 1, "not enough qshader bits" );
+
 	typedef struct drawSurf_s
 	{
 		trRefEntity_t *entity;
 		surfaceType_t *surface; // any of surface*_t
-		uint32_t      shaderNum;
-		int16_t       lightmapNum;
-		int16_t       fogNum;
-		uint32_t      addedIndex; // index of the drawSurf in the array before sorting
+		uint64_t      sort;
+
+		inline int index() const {
+			return int( ( sort & SORT_INDEX_MASK ) );
+		}
+		inline int entityNum() const {
+			return int( ( sort >> SORT_ENTITYNUM_SHIFT ) & SORT_ENTITYNUM_MASK ) - 1;
+		}
+		inline int fogNum() const {
+			return int( ( sort >> SORT_FOGNUM_SHIFT ) & SORT_FOGNUM_MASK );
+		}
+		inline int lightmapNum() const {
+			return int( ( sort >> SORT_LIGHTMAP_SHIFT ) & SORT_LIGHTMAP_MASK ) - 1;
+		}
+		inline int shaderNum() const {
+			return int( sort >> SORT_SHADER_SHIFT );
+		}
+
+		inline void setSort( int shaderNum, int lightmapNum, int entityNum, int fogNum, int index ) {
+			entityNum = entityNum + 1; //world entity is -1
+			lightmapNum = lightmapNum + 1; //no lightmap is -1
+			sort = uint64_t( index & SORT_INDEX_MASK ) |
+				( uint64_t( fogNum & SORT_FOGNUM_MASK ) << SORT_FOGNUM_SHIFT ) |
+				( uint64_t( entityNum & SORT_ENTITYNUM_MASK ) << SORT_ENTITYNUM_SHIFT ) |
+				( uint64_t( lightmapNum & SORT_LIGHTMAP_MASK ) << SORT_LIGHTMAP_SHIFT ) |
+				( uint64_t( shaderNum & SORT_SHADER_MASK ) << SORT_SHADER_SHIFT );
+		}
 	} drawSurf_t;
 
 	typedef enum
@@ -1634,9 +1734,6 @@ static inline byte floatToSnorm8(float f) {
 		byte                 cubeSideBits;
 
 		int16_t              scissorX, scissorY, scissorWidth, scissorHeight;
-
-		uint32_t             occlusionQuerySamples; // visible fragment count
-		qboolean             noOcclusionQueries;
 
 		struct interaction_s *next;
 	} interaction_t;
@@ -1704,10 +1801,9 @@ static inline byte floatToSnorm8(float f) {
 		vec3_t xyz;
 		vec2_t st;
 		vec2_t lightmap;
-		vec3_t tangent;
-		vec3_t binormal;
 		vec3_t normal;
-		vec4_t lightColor;
+		i16vec4_t qtangent;
+		u8vec4_t lightColor;
 	} srfVert_t;
 
 	typedef struct
@@ -1895,30 +1991,9 @@ static inline byte floatToSnorm8(float f) {
 		// common with leaf and node
 		int              contents; // -1 for nodes, to differentiate from leafs
 		int              visCounts[ MAX_VISCOUNTS ]; // node needs to be traversed if current
-		int              lightCount;
+
 		vec3_t           mins, maxs; // for bounding box culling
-		vec3_t           surfMins, surfMaxs; // ydnar: bounding box including surfaces
-		vec3_t           origin; // center of the bounding box
 		struct bspNode_s *parent;
-
-		qboolean         visible[ MAX_VIEWS ];
-		int              lastVisited[ MAX_VIEWS ];
-		int              lastQueried[ MAX_VIEWS ];
-		qboolean         issueOcclusionQuery[ MAX_VIEWS ];
-
-		link_t           visChain; // updated every visit
-		link_t           occlusionQuery; // updated every visit
-		link_t           occlusionQuery2; // updated every visit
-		link_t           multiQuery; // CHC++: list of all nodes that are used by the same occlusion query
-
-		VBO_t            *volumeVBO;
-		IBO_t            *volumeIBO;
-		int              volumeVerts;
-		int              volumeIndexes;
-
-		uint32_t occlusionQueryObjects[ MAX_VIEWS ];
-		int      occlusionQuerySamples[ MAX_VIEWS ]; // visible fragment count
-		int      occlusionQueryNumbers[ MAX_VIEWS ]; // for debugging
 
 		// node specific
 		cplane_t         *plane;
@@ -1928,9 +2003,8 @@ static inline byte floatToSnorm8(float f) {
 		int          cluster;
 		int          area;
 
+		int          firstMarkSurface;
 		int          numMarkSurfaces;
-		bspSurface_t **markSurfaces;
-		bspSurface_t **viewSurfaces;
 	} bspNode_t;
 
 	typedef struct
@@ -2074,6 +2148,11 @@ static inline byte floatToSnorm8(float f) {
 
 	typedef struct
 	{
+		vec3_t normal;
+	} mdvNormal_t;
+
+	typedef struct
+	{
 		float st[ 2 ];
 	} mdvSt_t;
 
@@ -2087,6 +2166,7 @@ static inline byte floatToSnorm8(float f) {
 
 		int               numVerts;
 		mdvXyz_t          *verts;
+		mdvNormal_t       *normals;
 		mdvSt_t           *st;
 
 		int               numTriangles;
@@ -2182,6 +2262,7 @@ static inline byte floatToSnorm8(float f) {
 		srfVBOMD5Mesh_t **vboSurfaces;
 
 		vec3_t          bounds[ 2 ];
+		float		internalScale;
 	} md5Model_t;
 
 	typedef enum
@@ -2256,9 +2337,12 @@ static inline byte floatToSnorm8(float f) {
 		struct srfIQModel_s     *surfaces;
 		struct IQAnim_s         *anims;
 
+		vec3_t          bounds[2];
+		float		internalScale;
+
 		// vertex data
 		float           *positions;
-		float           *texcoords;
+		int16_t         *texcoords;
 		float           *normals;
 		float           *tangents;
 		float           *bitangents;
@@ -2266,7 +2350,6 @@ static inline byte floatToSnorm8(float f) {
 		byte            *blendWeights;
 		byte            *colors;
 		int             *triangles;
-		float           *bounds;  // autocalculated bounds for models without animation
 
 		// skeleton data
 		int             *jointParents;
@@ -2363,18 +2446,6 @@ static inline byte floatToSnorm8(float f) {
 //====================================================
 	extern refimport_t ri;
 
-#define MAX_MOD_KNOWN      1024
-#define MAX_ANIMATIONFILES 4096
-
-#define MAX_LIGHTMAPS      256
-#define MAX_SKINS          1024
-
-#define MAX_DRAWSURFS      0x10000
-#define DRAWSURF_MASK      ( MAX_DRAWSURFS - 1 )
-
-#define MAX_INTERACTIONS   MAX_DRAWSURFS * 8
-#define INTERACTION_MASK   ( MAX_INTERACTIONS - 1 )
-
 	extern int gl_filter_min, gl_filter_max;
 
 	/*
@@ -2382,12 +2453,9 @@ static inline byte floatToSnorm8(float f) {
 	*/
 	typedef struct
 	{
-		int c_box_cull_in, c_box_cull_out;
-		int c_sphere_cull_in, c_sphere_cull_out;
+		int c_box_cull_in, c_box_cull_clip, c_box_cull_out;
 		int c_plane_cull_in, c_plane_cull_out;
 
-		int c_sphere_cull_patch_in, c_sphere_cull_patch_clip, c_sphere_cull_patch_out;
-		int c_box_cull_patch_in, c_box_cull_patch_clip, c_box_cull_patch_out;
 		int c_sphere_cull_mdv_in, c_sphere_cull_mdv_clip, c_sphere_cull_mdv_out;
 		int c_box_cull_mdv_in, c_box_cull_mdv_clip, c_box_cull_mdv_out;
 		int c_box_cull_md5_in, c_box_cull_md5_clip, c_box_cull_md5_out;
@@ -2408,11 +2476,6 @@ static inline byte floatToSnorm8(float f) {
 		int c_dlightSurfaces;
 		int c_dlightSurfacesCulled;
 		int c_dlightInteractions;
-
-		int c_occlusionQueries;
-		int c_occlusionQueriesMulti;
-		int c_occlusionQueriesSaved;
-		int c_CHCTime;
 
 		int c_decalProjectors, c_decalTestSurfaces, c_decalClipSurfaces, c_decalSurfaces, c_decalSurfacesCreated;
 	} frontEndCounters_t;
@@ -2486,17 +2549,6 @@ static inline byte floatToSnorm8(float f) {
 		int   c_flareTests;
 		int   c_flareRenders;
 
-		int   c_occlusionQueries;
-		int   c_occlusionQueriesMulti;
-		int   c_occlusionQueriesSaved;
-		int   c_occlusionQueriesAvailable;
-		int   c_occlusionQueriesLightsCulled;
-		int   c_occlusionQueriesEntitiesCulled;
-		int   c_occlusionQueriesLeafsCulled;
-		int   c_occlusionQueriesInteractionsCulled;
-		int   c_occlusionQueriesResponseTime;
-		int   c_occlusionQueriesFetchTime;
-
 		int   c_forwardAmbientTime;
 		int   c_forwardLightingTime;
 		int   c_forwardTranslucentTime;
@@ -2526,12 +2578,13 @@ static inline byte floatToSnorm8(float f) {
 		backEndCounters_t pc;
 		visTestQueries_t  visTestQueries[ MAX_VISTESTS ];
 		qboolean          isHyperspace;
+		qboolean          depthRenderImageValid;
 		trRefEntity_t     *currentEntity;
 		trRefLight_t      *currentLight; // only used when lighting interactions
 		qboolean          skyRenderedThisView; // flag for drawing sun
 
 		qboolean          projection2D; // if qtrue, drawstretchpic doesn't need to change modes
-		vec4_t            color2D;
+		u8vec4_t          color2D;
 		qboolean          vertexes2D; // shader needs to be finished
 		trRefEntity_t     entity2D; // currentEntity will point at this when doing 2D rendering
 	} backEndState_t;
@@ -2590,10 +2643,6 @@ static inline byte floatToSnorm8(float f) {
 		int      visIndex;
 		int      visClusters[ MAX_VISCOUNTS ];
 		int      visCounts[ MAX_VISCOUNTS ]; // incremented every time a new vis cluster is entered
-
-		link_t   traversalStack;
-		link_t   occlusionQueryQueue;
-		link_t   occlusionQueryList;
 
 		int      frameCount; // incremented every frame
 		int      sceneCount; // incremented every scene
@@ -2774,8 +2823,6 @@ static inline byte floatToSnorm8(float f) {
 		float         inverseSawToothTable[ FUNCTABLE_SIZE ];
 		float         fogTable[ FOG_TABLE_SIZE ];
 
-		uint32_t       occlusionQueryObjects[ MAX_OCCLUSION_QUERIES ];
-		int            numUsedOcclusionQueryObjects;
 		scissorState_t scissor;
 	} trGlobals_t;
 
@@ -2819,7 +2866,6 @@ static inline byte floatToSnorm8(float f) {
 	extern cvar_t *r_depthbits; // number of desired depth bits
 	extern cvar_t *r_colorbits; // number of desired color bits, only relevant for fullscreen
 	extern cvar_t *r_alphabits; // number of desired depth bits
-	extern cvar_t *r_stereo; // desired pixelformat stereo flag
 
 	extern cvar_t *r_ext_multisample;  // desired number of MSAA samples
 
@@ -2852,7 +2898,6 @@ static inline byte floatToSnorm8(float f) {
 	extern cvar_t *r_compressNormalMaps;
 	extern cvar_t *r_exportTextures;
 	extern cvar_t *r_heatHaze;
-	extern cvar_t *r_heatHazeFix;
 	extern cvar_t *r_noMarksOnTrisurfs;
 	extern cvar_t *r_recompileShaders;
 	extern cvar_t *r_lazyShaders; // 0: build all shaders on program start 1: delay shader build until first map load 2: delay shader build until needed
@@ -2866,7 +2911,7 @@ static inline byte floatToSnorm8(float f) {
 	extern cvar_t *r_nocull;
 	extern cvar_t *r_facePlaneCull; // enables culling of planar surfaces with back side test
 	extern cvar_t *r_nocurves;
-	extern cvar_t *r_noLightScissors;
+	extern cvar_t *r_lightScissors;
 	extern cvar_t *r_noLightVisCull;
 	extern cvar_t *r_noInteractionSort;
 	extern cvar_t *r_showcluster;
@@ -2889,6 +2934,9 @@ static inline byte floatToSnorm8(float f) {
 	extern cvar_t *r_ext_framebuffer_blit;
 	extern cvar_t *r_extx_framebuffer_mixed_formats;
 	extern cvar_t *r_ext_generate_mipmap;
+	extern cvar_t *r_arb_buffer_storage;
+	extern cvar_t *r_arb_map_buffer_range;
+	extern cvar_t *r_arb_sync;
 
 	extern cvar_t *r_nobind; // turns off binding to appropriate textures
 	extern cvar_t *r_collapseStages;
@@ -2994,7 +3042,6 @@ static inline byte floatToSnorm8(float f) {
 	extern cvar_t *r_showLightScissors;
 	extern cvar_t *r_showLightBatches;
 	extern cvar_t *r_showLightGrid;
-	extern cvar_t *r_showOcclusionQueries;
 	extern cvar_t *r_showBatches;
 	extern cvar_t *r_showLightMaps; // render lightmaps only
 	extern cvar_t *r_showDeluxeMaps;
@@ -3015,17 +3062,8 @@ static inline byte floatToSnorm8(float f) {
 	extern cvar_t *r_vboDeformVertexes;
 
 	extern cvar_t *r_mergeLeafSurfaces;
-
 	extern cvar_t *r_parallaxMapping;
 	extern cvar_t *r_parallaxDepthScale;
-
-	extern cvar_t *r_dynamicBspOcclusionCulling;
-	extern cvar_t *r_dynamicEntityOcclusionCulling;
-	extern cvar_t *r_dynamicLightOcclusionCulling;
-	extern cvar_t *r_chcMaxPrevInvisNodesBatchSize;
-	extern cvar_t *r_chcMaxVisibleFrames;
-	extern cvar_t *r_chcVisibilityThreshold;
-	extern cvar_t *r_chcIgnoreLeaves;
 
 	extern cvar_t *r_reflectionMapping;
 	extern cvar_t *r_highQualityNormalMapping;
@@ -3084,25 +3122,42 @@ static inline byte floatToSnorm8(float f) {
 	void           R_CalcFrustumNearCorners( const vec4_t frustum[ FRUSTUM_PLANES ], vec3_t corners[ 4 ] );
 	void           R_CalcFrustumFarCorners( const vec4_t frustum[ FRUSTUM_PLANES ], vec3_t corners[ 4 ] );
 	qboolean       R_CompareVert( srfVert_t *v1, srfVert_t *v2, qboolean checkst );
-	void           R_CalcNormalForTriangle( vec3_t normal, const vec3_t v0, const vec3_t v1, const vec3_t v2 );
 
-	void           R_CalcTangentsForTriangle( vec3_t tangent, vec3_t binormal,
-	    const vec3_t v0, const vec3_t v1, const vec3_t v2,
-	    const vec2_t t0, const vec2_t t1, const vec2_t t2 );
+	/* Tangent/normal vector calculation functions */
+	void R_CalcFaceNormal( vec3_t normal, const vec3_t v0,
+			       const vec3_t v1, const vec3_t v2 );
 
-	void R_CalcTangentSpace( vec3_t tangent, vec3_t binormal, vec3_t normal,
-	                         const vec3_t v0, const vec3_t v1, const vec3_t v2,
-	                         const vec2_t t0, const vec2_t t1, const vec2_t t2 );
+	void R_CalcTangents( vec3_t tangent, vec3_t binormal,
+			     const vec3_t v0, const vec3_t v1, const vec3_t v2,
+			     const vec2_t t0, const vec2_t t1, const vec2_t t2 );
 
-	void R_CalcTangentSpaceFast( vec3_t tangent, vec3_t binormal, vec3_t normal,
-	                             const vec3_t v0, const vec3_t v1, const vec3_t v2,
-	                             const vec2_t t0, const vec2_t t1, const vec2_t t2 );
+	void R_CalcTangents( vec3_t tangent, vec3_t binormal,
+			     const vec3_t v0, const vec3_t v1, const vec3_t v2,
+			     const i16vec2_t t0, const i16vec2_t t1, const i16vec2_t t2 );
 
-	void R_CalcTBN( vec3_t tangent, vec3_t binormal, vec3_t normal,
-	                const vec3_t v0, const vec3_t v1, const vec3_t v2,
-	                const vec2_t t0, const vec2_t t1, const vec2_t t2 );
+	/*
+	 * QTangent representation of tangentspace:
+	 *
+	 *   A unit quaternion can represent any member of the special
+	 *   orthogonal subgroup of 3x3 matrices, i.e. orthogonal matrices
+	 *   with determinant 1.  In the general case the TBN vectors may not
+	 *   be orthogonal, so they have to be orthogonalized first.
+	 *
+	 *   Even then the determinant may be -1, so we can only encode the
+	 *   TBN we get by flipping the T vector.  Fortunately every
+	 *   quaternion and its negative represent the same rotation, so we
+	 *   can remember if the matrix has been flipped in the sign of the W
+	 *   component.
+	 *
+	 *   This is not possible if W == 0, i.e. it is a 180 degree rotation,
+	 *   so in that case we set W to 1 or -1. This introduces another
+	 *   minimal error.
+	 */
+	void R_TBNtoQtangents( const vec3_t tangent, const vec3_t binormal,
+			       const vec3_t normal, i16vec4_t qtangent );
 
-	qboolean R_CalcTangentVectors( srfVert_t *dv[ 3 ] );
+	void R_QtangentsToTBN( const i16vec4_t qtangent, vec3_t tangent,
+			       vec3_t binormal, vec3_t normal );
 
 	float    R_CalcFov( float fovX, float width, float height );
 
@@ -3174,7 +3229,7 @@ static inline byte floatToSnorm8(float f) {
 	void      RE_StretchRaw( int x, int y, int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty );
 	void      RE_UploadCinematic( int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty );
 
-	void      RE_BeginFrame( stereoFrame_t stereoFrame );
+	void      RE_BeginFrame( void );
 	qboolean  RE_BeginRegistration( glconfig_t *glconfig, glconfig2_t *glconfig2 );
 	void      RE_LoadWorldMap( const char *mapname );
 	void      RE_SetWorldVisData( const byte *vis );
@@ -3300,8 +3355,6 @@ static inline byte floatToSnorm8(float f) {
 	====================================================================
 	*/
 
-	typedef byte color4ub_t[ 4 ];
-
 	typedef struct stageVars
 	{
 		vec4_t   color;
@@ -3311,17 +3364,35 @@ static inline byte floatToSnorm8(float f) {
 
 #define MAX_MULTIDRAW_PRIMITIVES 1000
 
+	typedef struct shaderVertex_s {
+		vec3_t    xyz;
+		u8vec4_t  color;
+		i16vec4_t qtangents;
+		i16vec4_t texCoords;
+	} shaderVertex_t;
+
+#ifdef GLEW_ARB_sync
+	typedef struct glRingbuffer_s {
+		// the BO is logically split into DYN_BUFFER_SEGMENTS
+		// segments, the active segment is the one the CPU may write
+		// into, while the GPU may read from the inactive segments.
+		void           *baseAddr;
+		GLsizei        elementSize;
+		GLsizei        segmentElements;
+		int            activeSegment;
+		// all syncs except the active segment's should be
+		// always defined and waitable, the active segment's
+		// sync is always undefined
+		GLsync         syncs[ DYN_BUFFER_SEGMENTS ];
+	} glRingbuffer_t;
+#endif
+
 	typedef struct shaderCommands_s
 	{
-		vec4_t xyz[ SHADER_MAX_VERTEXES ];
-		vec4_t tangents[ SHADER_MAX_VERTEXES ];
-		vec4_t binormals[ SHADER_MAX_VERTEXES ];
-		vec4_t normals[ SHADER_MAX_VERTEXES ];
-		vec4_t colors[ SHADER_MAX_VERTEXES ];
-		vec2_t texCoords[ SHADER_MAX_VERTEXES ];
-		vec2_t lightCoords[ SHADER_MAX_VERTEXES ];
-
-		glIndex_t   indexes[ SHADER_MAX_INDEXES ];
+		shaderVertex_t *verts;	 // at least SHADER_MAX_VERTEXES accessible
+		glIndex_t      *indexes; // at least SHADER_MAX_INDEXES accessible
+		uint32_t       vertsWritten, vertexBase;
+		uint32_t       indexesWritten, indexBase;
 
 		VBO_t       *vbo;
 		IBO_t       *ibo;
@@ -3348,12 +3419,23 @@ static inline byte floatToSnorm8(float f) {
 		int         numBones;
 		transform_t bones[ MAX_BONES ];
 
+		qboolean    vboVertexAnimation;
+
 		// info extracted from current shader or backend mode
 		void ( *stageIteratorFunc )( void );
 		void ( *stageIteratorFunc2 )( void );
 
 		int           numSurfaceStages;
 		shaderStage_t **surfaceStages;
+
+		// preallocated host buffers for verts and indexes 
+		shaderVertex_t *vertsBuffer;
+		glIndex_t      *indexesBuffer;
+
+#ifdef GLEW_ARB_sync
+		glRingbuffer_t  vertexRB;
+		glRingbuffer_t  indexRB;
+#endif
 	} shaderCommands_t;
 
 	extern shaderCommands_t tess;
@@ -3404,7 +3486,8 @@ static inline byte floatToSnorm8(float f) {
 	void Tess_AddCubeWithNormals( const vec3_t position, const vec3_t minSize, const vec3_t maxSize, const vec4_t color );
 
 	void Tess_InstantQuad( vec4_t quadVerts[ 4 ] );
-	void Tess_UpdateVBOs( uint32_t attribBits );
+	void Tess_MapVBOs( qboolean forceCPU );
+	void Tess_UpdateVBOs( void );
 
 	void RB_ShowImages( void );
 
@@ -3802,12 +3885,6 @@ static inline byte floatToSnorm8(float f) {
 	typedef struct
 	{
 		int       commandId;
-		qboolean  enable;
-	} scissorEnableCommand_t;
-
-	typedef struct
-	{
-		int       commandId;
 		int       x;
 		int       y;
 		int       w;
@@ -3879,7 +3956,6 @@ static inline byte floatToSnorm8(float f) {
 	  RC_STRETCH_PIC,
 	  RC_2DPOLYS,
 	  RC_2DPOLYSINDEXED,
-	  RC_SCISSORENABLE,
 	  RC_SCISSORSET,
 	  RC_ROTATED_PIC,
 	  RC_STRETCH_PIC_GRADIENT, // (SA) added
@@ -3923,6 +3999,9 @@ static inline byte floatToSnorm8(float f) {
 		int                 numVisTests;
 		visTestResult_t     visTests[ MAX_VISTESTS ];
 
+		bspNode_t			**traversalList;
+		int                 traversalLength;
+
 		renderCommandList_t commands;
 	} backEndData_t;
 
@@ -3950,7 +4029,7 @@ static inline byte floatToSnorm8(float f) {
 	void                                RE_ScissorEnable( qboolean enable );
 	void                                RE_ScissorSet( int x, int y, int w, int h );
 
-	void                                RE_BeginFrame( stereoFrame_t stereoFrame );
+	void                                RE_BeginFrame( void );
 	void                                RE_EndFrame( int *frontEndMsec, int *backEndMsec );
 
 	void                                LoadTGA( const char *name, byte **pic, int *width, int *height, int *numLayers, int *numMips, int *bits, byte alphaByte );

@@ -1208,7 +1208,7 @@ char *ClientConnect( int clientNum, qboolean firstTime )
 
 	if ( client->pers.admin )
 	{
-		trap_GMTime( &client->pers.admin->lastSeen );
+		Com_GMTime( &client->pers.admin->lastSeen );
 	}
 
 	// check for admin ban
@@ -1279,6 +1279,8 @@ char *ClientConnect( int clientNum, qboolean firstTime )
 
 	country = Info_ValueForKey( userinfo, "geoip" );
 	Q_strncpyz( client->pers.country, country, sizeof( client->pers.country ) );
+
+	G_SendClientPmoveParams(clientNum);
 
 	// don't do the "xxx connected" messages if they were caried over from previous level
 	if ( firstTime )
@@ -1483,12 +1485,6 @@ void ClientBegin( int clientNum )
 
 	// count current clients and rank for scoreboard
 	CalculateRanks();
-
-	// send the client a list of commands that can be used
-	if ( !client->pers.admin )
-	{
-		G_ListCommands( ent );
-	}
 
 	// display the help menu, if connecting the first time
 	if ( !client->sess.seenWelcome )
@@ -1878,6 +1874,10 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	BG_PlayerStateToEntityState( &client->ps, &ent->s, qtrue );
 
 	client->pers.infoChangeTime = level.time;
+
+	// (re)tag the client for its team
+	Beacon::DeleteTags( ent );
+	Beacon::Tag( ent, (team_t)ent->client->ps.persistant[ PERS_TEAM ], 0, true );
 }
 
 /*
@@ -1937,4 +1937,6 @@ void ClientDisconnect( int clientNum )
 	trap_SetConfigstring( CS_PLAYERS + clientNum, "" );
 
 	CalculateRanks();
+
+	Beacon::PropagateAll();
 }

@@ -150,6 +150,12 @@ extern int   LEVEL4_CRUSH_REPEAT;
 #define ACIDTUBE_REPEAT         300
 #define ACIDTUBE_REPEAT_ANIM    2000
 
+#define SPIKER_RANGE            200.0f
+#define SPIKER_MISSILEROWS      4
+#define SPIKER_MISSILES         26   // actual value +/- SPIKER_MISSILEROWS
+#define SPIKER_ROWOFFSET        0.5f // 0.0: Spikes are shot upwards, 1.0: Spikes are shot sideways
+#define SPIKER_COOLDOWN         5000
+
 #define TRAPPER_RANGE           400
 
 #define HIVE_SENSE_RANGE        500.0f
@@ -169,7 +175,8 @@ extern int   LEVEL4_CRUSH_REPEAT;
  */
 
 #define ALIENSENSE_RANGE         1000.0f
-#define REGEN_BOOST_RANGE        200.0f
+#define REGEN_BOOSTER_RANGE      200.0f
+#define REGEN_TEAMMATE_RANGE     300.0f
 
 #define ALIEN_POISON_TIME        10000
 #define ALIEN_POISON_DMG         5
@@ -271,19 +278,25 @@ extern float REACTOR_BASESIZE;
 extern float REPEATER_BASESIZE;
 
 #define TURRET_THINK_PERIOD   25  // doesn't affect damage or turn speed directly, just their precision
-#define TURRET_ATTACK_PERIOD  125
-#define TURRET_RANGE          400
-#define TURRET_SPREAD         200
-#define TURRET_ZONES          3   // range is divided into this amount of zones (disks) with equal width
-#define TURRET_ZONE_DAMAGE    { 4, 3, 2 } // damage for each of the TURRET_ZONES zones
+#define TURRET_SEARCH_PERIOD  500 // in ms, how often to look for a new target
 #define TURRET_PITCH_CAP      30  // in degrees
 #define TURRET_PITCH_SPEED    160 // in degrees per second
 #define TURRET_YAW_SPEED      120 // in degrees per second
-#define TURRET_GIVEUP_TARGET  500 // in ms, time until turret stops tracking a target after losing los
+#define TURRET_GIVEUP_TARGET  1000 // in ms, time until turret stops tracking a target after losing los
 
-extern float TESLAGEN_RANGE;
-extern int   TESLAGEN_REPEAT;
-extern int   TESLAGEN_DMG;
+#define MGTURRET_ATTACK_PERIOD  125
+#define MGTURRET_RANGE          350
+#define MGTURRET_SPREAD         200
+#define MGTURRET_ZONES          3   // range is divided into this amount of zones (disks) with equal width
+#define MGTURRET_ZONE_DAMAGE    { 4, 3, 2 } // damage for each of the TURRET_ZONES zones
+
+#define ROCKETPOD_RANGE         2000
+#define ROCKETPOD_ATTACK_PERIOD 1000
+#define ROCKETPOD_LOCKON_TIME   500
+
+#define ROCKET_TURN_PERIOD      50
+#define ROCKET_TURN_ANGLE       8.0f
+#define ROCKET_LIFETIME         3000
 
 extern float REACTOR_ATTACK_RANGE;
 extern int   REACTOR_ATTACK_REPEAT;
@@ -374,6 +387,7 @@ extern int   REACTOR_ATTACK_DAMAGE;
 #define DEFAULT_INITIAL_MINE_RATE          "8"     // in (BP/min)/RGS
 #define DEFAULT_MINE_RATE_HALF_LIFE        "20"    // in min
 #define DEFAULT_MINIMUM_MINE_RATE          "50"
+#define DEFAULT_BP_LOSS_FRAC               "0.5"
 
 // momentum
 #define MOMENTUM_MAX                     300.0f
@@ -386,6 +400,7 @@ extern int   REACTOR_ATTACK_DAMAGE;
 #define DEFAULT_MOMENTUM_BUILD_MOD       "0.6"
 #define DEFAULT_MOMENTUM_DECON_MOD       "1.0" // used on top of build mod
 #define DEFAULT_MOMENTUM_DESTROY_MOD     "0.8"
+#define MAIN_STRUCTURE_MOMENTUM_VALUE    20    // momentum reward for destroying OM/RC
 
 #define MAXIMUM_BUILD_TIME                 20000 // used for pie timer
 #define BUILDABLE_START_HEALTH_FRAC        0.25f

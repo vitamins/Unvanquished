@@ -586,8 +586,6 @@ void RE_RenderScene( const refdef_t *fd )
 		ri.Error( ERR_DROP, "R_RenderScene: NULL worldmodel" );
 	}
 
-	Com_Memcpy( tr.refdef.text, fd->text, sizeof( tr.refdef.text ) );
-
 	tr.refdef.x = fd->x;
 	tr.refdef.y = fd->y;
 	tr.refdef.width = fd->width;
@@ -708,8 +706,6 @@ void RE_RenderScene( const refdef_t *fd )
 
 	parms.fovX = tr.refdef.fov_x;
 	parms.fovY = tr.refdef.fov_y;
-
-	parms.stereoFrame = tr.refdef.stereoFrame;
 
 	VectorCopy( fd->vieworg, parms.orientation.origin );
 	VectorCopy( fd->viewaxis[ 0 ], parms.orientation.axis[ 0 ] );
