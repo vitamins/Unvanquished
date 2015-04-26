@@ -457,6 +457,8 @@ static void CG_Draw2D( void )
 	for( i = 0; i < cg.beaconCount; i++ )
 		CG_DrawBeacon( cg.beacons[ i ] );
 
+	DamageIndicator::DrawAll( );
+
 	if ( cg.zoomed )
 	{
 		vec4_t black = { 0.0f, 0.0f, 0.0f, 0.5f };

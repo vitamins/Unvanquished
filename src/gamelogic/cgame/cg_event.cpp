@@ -726,6 +726,8 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 		return;
 	}
 
+	DamageIndicator::Spawn( es );
+
 	clientNum = es->clientNum;
 
 	if ( clientNum < 0 || clientNum >= MAX_CLIENTS )

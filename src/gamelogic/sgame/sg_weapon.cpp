@@ -408,7 +408,7 @@ static void SnapVectorNormal( vec3_t v, vec3_t normal )
 }
 */
 
-static void SendRangedHitEvent( gentity_t *attacker, gentity_t *target, trace_t *tr )
+static void SendRangedHitEvent( gentity_t *attacker, gentity_t *target, trace_t *tr, int damage )
 {
 	gentity_t *event;
 
@@ -438,6 +438,9 @@ static void SendRangedHitEvent( gentity_t *attacker, gentity_t *target, trace_t 
 
 	// weapon mode
 	event->s.generic1 = attacker->s.generic1;
+
+	// damage
+	event->s.groundEntityNum = MAX( MIN( damage, 999 ), 0 );
 }
 
 static void SendMeleeHitEvent( gentity_t *attacker, gentity_t *target, trace_t *tr )
@@ -583,7 +586,7 @@ static void FireBullet( gentity_t *self, float spread, int damage, int mod )
 
 	target = &g_entities[ tr.entityNum ];
 
-	SendRangedHitEvent( self, target, &tr );
+	SendRangedHitEvent( self, target, &tr, damage );
 
 	if ( target->takedamage )
 	{
@@ -695,7 +698,7 @@ static void FireMassdriver( gentity_t *self )
 	// snap the endpos to integers, but nudged towards the line
 	G_SnapVectorTowards( tr.endpos, muzzle );
 
-	SendRangedHitEvent( self, target, &tr );
+	SendRangedHitEvent( self, target, &tr, MDRIVER_DMG );
 
 	if ( target->takedamage )
 	{
@@ -1024,7 +1027,7 @@ static void FireLasgun( gentity_t *self )
 	// snap the endpos to integers, but nudged towards the line
 	G_SnapVectorTowards( tr.endpos, muzzle );
 
-	SendRangedHitEvent( self, target, &tr );
+	SendRangedHitEvent( self, target, &tr, LASGUN_DAMAGE );
 
 	if ( target->takedamage )
 	{
@@ -1053,7 +1056,7 @@ static void FirePainsaw( gentity_t *self )
 	}
 
 	// not really a "ranged" weapon, but this is still the right call
-	SendRangedHitEvent( self, target, &tr );
+	SendRangedHitEvent( self, target, &tr, PAINSAW_DAMAGE );
 
 	G_Damage( target, self, self, forward, tr.endpos, PAINSAW_DAMAGE, 0, MOD_PAINSAW );
 }

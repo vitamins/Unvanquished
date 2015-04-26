@@ -2375,5 +2375,16 @@ float CG_Rocket_ProgressBarValueByName( const char *name );
 // cg_gameinfo.c
 //
 void CG_LoadArenas( void );
+
+//
+// DamageIndicator.cpp
+//
+
+namespace DamageIndicator
+{
+	void Spawn( entityState_t *es );
+	void DrawAll( );
+}
+
 #endif
 
