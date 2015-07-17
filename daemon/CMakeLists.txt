@@ -70,6 +70,7 @@ else()
     set(BUILD_GAME_NACL 0)
 endif()
 option(BUILD_TTY_CLIENT "Build Daemon headless client" 1)
+option(BUILD_SDL "Build SDL from source" 0)
 
 cmake_dependent_option(USE_VOIP "Compile with VOIP support" 0 "BUILD_CLIENT OR BUILD_SERVER OR BUILD_TTY_CLIENT" 0)
 cmake_dependent_option(USE_SMP "Compile with support for running the renderer in a separate thread" 1 BUILD_CLIENT 0)
@@ -722,9 +723,29 @@ if (BUILD_CLIENT OR BUILD_TTY_CLIENT)
     set(LIBS_CLIENTBASE ${LIBS_CLIENTBASE} srclibs-mumblelink)
 endif()
 
+add_custom_target(externals ALL)
+set_target_properties(externals PROPERTIES FOLDER "CMakePlumbing")
+
 # SDL, required for all targets on win32 because of iconv
 if (BUILD_CLIENT OR (WIN32 AND (BUILD_TTY_CLIENT OR BUILD_SERVER)))
-    find_package(SDL2 REQUIRED)
+    if (BUILD_SDL)
+        include(ExternalProject)
+        set(SDL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/sdl")
+        ExternalProject_Add(SDL
+            PREFIX ${SDL_PREFIX}
+            # HG_REPOSITORY http://hg.libsdl.org/SDL
+            GIT_REPOSITORY https://github.com/spurious/SDL-mirror.git
+            GIT_TAG b032dd985fcaf2df4ba13d59124d7e1b05be6a82
+            INSTALL_DIR ${SDL_PREFIX}
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${SDL_PREFIX}
+        )
+        add_dependencies(externals SDL)
+        set(SDL2MAIN_LIBRARY ${SDL_PREFIX}/lib/libSDL2main.a)
+        set(SDL2_LIBRARY ${SDL_PREFIX}/lib/libSDL2.a)
+        set(SDL2_INCLUDE_DIR ${SDL_PREFIX}/include/SDL2)
+    else()
+        find_package(SDL2 REQUIRED)
+    endif()
     include_directories(${SDL2_INCLUDE_DIR})
     if (WIN32)
         set(LIBS_ENGINE ${LIBS_ENGINE} ${SDL2_LIBRARY})
@@ -801,6 +822,7 @@ endif()
 
 if (BUILD_CLIENT)
     add_executable(client WIN32 ${WIN_RC} ${PCH_FILE} ${COMMONLIST} ${ENGINELIST} ${SERVERLIST} ${CLIENTBASELIST} ${CLIENTLIST})
+    add_dependencies(client externals)
     if (USE_SMP)
         set_property(TARGET client APPEND PROPERTY COMPILE_DEFINITIONS SMP)
     endif()
@@ -818,6 +840,7 @@ endif()
 
 if (BUILD_SERVER)
     add_executable(server WIN32 ${WIN_RC} ${PCH_FILE} ${COMMONLIST} ${ENGINELIST} ${SERVERLIST} ${DEDSERVERLIST})
+    add_dependencies(server externals)
     target_link_libraries(server ${LIBS_ENGINE} ${LIBS_BASE})
     set_property(TARGET server APPEND PROPERTY COMPILE_DEFINITIONS BUILD_ENGINE BUILD_SERVER)
     set_target_properties(server PROPERTIES OUTPUT_NAME "daemonded" PREFIX "" FOLDER "engine")
@@ -828,6 +851,7 @@ endif()
 
 if (BUILD_TTY_CLIENT)
     add_executable(ttyclient WIN32 ${WIN_RC} ${PCH_FILE} ${COMMONLIST} ${ENGINELIST} ${SERVERLIST} ${CLIENTBASELIST} ${TTYCLIENTLIST})
+    add_dependencies(ttyclient externals)
     target_link_libraries(ttyclient ${LIBS_CLIENTBASE} ${LIBS_ENGINE} ${LIBS_BASE})
     set_property(TARGET ttyclient APPEND PROPERTY COMPILE_DEFINITIONS BUILD_ENGINE BUILD_TTY_CLIENT)
     set_target_properties(ttyclient PROPERTIES OUTPUT_NAME "daemon-tty" PREFIX "" FOLDER "engine")

@@ -8,10 +8,10 @@ environment:
 #      COMPILER_VERSION: "5.1.0"
 #      MINGW_VERSION: "v4-rev0"
 #      GENERATOR: "MinGW Makefiles"
-    - COMPILER: msvc
-      COMPILER_VERSION: "12.0"
-      TARGET: x86
-      GENERATOR: "NMake Makefiles"
+#    - COMPILER: msvc
+#      COMPILER_VERSION: "12.0"
+#      TARGET: x86
+#      GENERATOR: "NMake Makefiles"
 #    - COMPILER: msvc
 #      COMPILER_VERSION: "12.0"
 #      TARGET: x86_amd64
@@ -20,10 +20,10 @@ environment:
 #      COMPILER_VERSION: "14.0"
 #      TARGET: x86
 #      GENERATOR: "NMake Makefiles"
-#    - COMPILER: msvc
-#      TARGET: x86_amd64
-#      COMPILER_VERSION: "14.0"
-#      GENERATOR: "NMake Makefiles"
+    - COMPILER: msvc
+      TARGET: x86_amd64
+      COMPILER_VERSION: "14.0"
+      GENERATOR: "NMake Makefiles"
 
 matrix:
   fast_finish: false
@@ -64,5 +64,5 @@ build_script:
           $env:CC="gcc"
           $env:CXX="g++"
       }
-      cmake -DUSE_WERROR=1 -DBE_VERBOSE=1 -G "${env:GENERATOR}" -DBUILD_GAME_NACL=0 -DCMAKE_BUILD_TYPE=Debug ..
+      cmake -DUSE_WERROR=1 -DBE_VERBOSE=1 -G "${env:GENERATOR}" -DBUILD_SDL=1 -DBUILD_GAME_NACL=0 -DCMAKE_BUILD_TYPE=Debug ..
       cmake --build .
