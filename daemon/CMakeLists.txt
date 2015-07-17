@@ -738,10 +738,13 @@ if (BUILD_CLIENT OR (WIN32 AND (BUILD_TTY_CLIENT OR BUILD_SERVER)))
             GIT_TAG b032dd985fcaf2df4ba13d59124d7e1b05be6a82
             INSTALL_DIR ${SDL_PREFIX}
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${SDL_PREFIX}
+                -DDIRECTX=0
+                -DSDL_STATIC=1
+                -DSDL_SHARED=0
         )
         add_dependencies(externals SDL)
-        set(SDL2MAIN_LIBRARY ${SDL_PREFIX}/lib/libSDL2main.a)
-        set(SDL2_LIBRARY ${SDL_PREFIX}/lib/libSDL2.a)
+        set(SDL2MAIN_LIBRARY ${SDL_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}SDL2main${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(SDL2_LIBRARY ${SDL_PREFIX}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}SDL2${CMAKE_STATIC_LIBRARY_SUFFIX} ${SDL2MAIN_LIBRARY})
         set(SDL2_INCLUDE_DIR ${SDL_PREFIX}/include/SDL2)
     else()
         find_package(SDL2 REQUIRED)
