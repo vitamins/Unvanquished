@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // TODO:
 //  - Sys::IsDebuggerAttached
 //  - Documentation
+//  - __assume __builtin_unreachable
 
 #ifndef COMMON_ASSERT_H_
 #define COMMON_ASSERT_H_
@@ -53,7 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                 } \
                 Sys::Error(msg); \
             } \
-        while(ASSERT_LOOP_CONDITION)
+        while(DAEMON_ASSERT_LOOP_CONDITION)
 #else
     #define DAEMON_ASSERT_CALLSITE_HELPER(file, func, line, code, condition, message)
 #endif
@@ -67,33 +68,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     )
 
 #define DAEMON_ASSERT_EQ(a, b) DAEMON_ASSERT_CALLSITE( \
-        auto expected = (a); auto actual = (b), \
+        auto&& expected = (a); auto&& actual = (b), \
         expected == actual, \
         Str::Format("\"%s == %s\" expected: %s, actual: %s", #a, #b, expected, actual) \
     );
 #define DAEMON_ASSERT_NQ(a, b) DAEMON_ASSERT_CALLSITE( \
-        auto notExpected = (a); auto actual = (b), \
+        auto&& notExpected = (a); auto&& actual = (b), \
         notExpected != actual, \
         Str::Format("\"%s != %s\" not expected: %s, actual: %s", #a, #b, notExpected, actual) \
     );
 
 #define DAEMON_ASSERT_LT(a, b) DAEMON_ASSERT_CALLSITE( \
-        auto bound = (a); auto actual = (b), \
+        auto&& bound = (a); auto&& actual = (b), \
         bound < actual, \
         Str::Format("\"%s < %s\" bound: %s, actual: %s", #a, #b, a, b) \
     );
 #define DAEMON_ASSERT_LE(a, b) DAEMON_ASSERT_CALLSITE( \
-        auto bound = (a); auto actual = (b), \
+        auto&& bound = (a); auto&& actual = (b), \
         bound <= actual, \
         Str::Format("\"%s <= %s\" bound: %s, actual: %s", #a, #b, a, b) \
     );
 #define DAEMON_ASSERT_GT(a, b) DAEMON_ASSERT_CALLSITE( \
-        auto bound = (a); auto actual = (b), \
+        auto&& bound = (a); auto&& actual = (b), \
         bound > actual, \
         Str::Format("\"%s > %s\" bound: %s, actual: %s", #a, #b, a, b) \
     );
 #define DAEMON_ASSERT_GE(a, b) DAEMON_ASSERT_CALLSITE( \
-        auto bound = (a); auto actual = (b), \
+        auto&& bound = (a); auto&& actual = (b), \
         bound >= actual, \
         Str::Format("\"%s >= %s\" bound: %s, actual: %s", #a, #b, a, b) \
     );
