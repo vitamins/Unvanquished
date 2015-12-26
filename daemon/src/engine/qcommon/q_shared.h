@@ -1975,6 +1975,9 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		int damagePitch;
 		int damageCount;
 
+		vec2_t recoil;
+		vec2_t recoilVel;
+
 		int stats[ MAX_STATS ];
 		int persistant[ MAX_PERSISTANT ]; // stats that aren't cleared on death
 

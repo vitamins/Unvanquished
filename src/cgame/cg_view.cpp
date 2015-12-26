@@ -1725,6 +1725,60 @@ static int CG_CalcViewValues()
 	{
 		float speed;
 
+           //recoil
+    //if ( cg.predictedPlayerState.weapon == WP_MACHINEGUN && cg.recoilActive)
+    //{
+        //add recoil from new shot
+//        float ratio;
+//        if(cg.startRecoil)
+//        {
+//            //recoil is still active, add old recoil value to offset that carries over between shots
+//            //the crosshair will climb higher and higher when shooting before recoil has settled
+//            //for this to work properly the attackRate must be set equal (or higher) to RECOIL_TIME
+//            if(cg.recoilActive)
+//            {
+//                ratio = cg.time - cg.recoilTime;
+//                if(ratio < RECOIL_CENTER_TIME)
+//                {
+//                    ratio = 1.0 - ( ratio - RECOIL_TIME ) / (RECOIL_CENTER_TIME - RECOIL_TIME);
+//                    cg.curpitch += ratio * RECOIL_MPITCH;
+//                    cg.curyaw += ratio * RECOIL_MYAW;
+//                }
+//                cg.recoilTime = cg.time;
+//            }
+//            else
+//            {
+//                cg.recoilActive = true;
+//                cg.recoilTime = cg.time;
+//            }
+//        cg.startRecoil = false;
+//        }
+//        else
+//        {
+//            ratio = cg.time - cg.recoilTime;
+//            if(ratio < RECOIL_CENTER_TIME)
+//            {
+//                if(ratio < RECOIL_TIME)
+//                {
+//                    ratio /= RECOIL_TIME;
+//                    cg.refdefViewAngles[ PITCH ] += ratio * RECOIL_MPITCH;
+//                    cg.refdefViewAngles[ YAW ] += ratio * RECOIL_MYAW;
+//                }
+//                else
+//                {
+//                    ratio = 1.0 - ( ratio - RECOIL_TIME ) / (RECOIL_CENTER_TIME - RECOIL_TIME);
+//                    cg.refdefViewAngles[ PITCH ] += ratio * RECOIL_MPITCH;
+//                    cg.refdefViewAngles[ YAW ] += ratio * RECOIL_MYAW;
+//                }
+//            }
+//            else
+//            {
+//                cg.recoilActive = false;
+//            }
+//        }
+//        cg.refdefViewAngles[ PITCH ] += cg.curpitch;
+//        cg.refdefViewAngles[ YAW ] += cg.curyaw;
+
 		// offset for local bobbing and kicks
 		CG_OffsetFirstPersonView();
 

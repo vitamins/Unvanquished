@@ -1058,7 +1058,7 @@ typedef enum
 	//implicit
 	BCT_HEALTH,
 	BCT_AMMO,
-	
+
 	NUM_BEACON_TYPES
 } beaconType_t;
 
@@ -1093,7 +1093,7 @@ typedef struct
 	qhandle_t     icon[ 2 ][ 4 ];
 	sfxHandle_t   inSound;
 	sfxHandle_t   outSound;
-#endif	
+#endif
 
 	int           decayTime;
 } beaconAttributes_t;
@@ -1266,6 +1266,14 @@ typedef struct
 	bool longRanged;
 
 	team_t   team;
+    bool usesRecoil;
+	float    recoilAlpha;
+	float    recoilBeta;
+	float    recoilGamma;
+	float    recoilDelta;
+	float    recoilEpsilon;
+
+	bool fakeFireAnimation;
 } weaponAttributes_t;
 
 // upgrade record
@@ -1596,6 +1604,8 @@ char *Substring( const char *in, int start, int count );
 char *BG_strdup( const char *string );
 
 const char *Trans_GenderContext( gender_t gender );
+
+void BG_ApplyRecoil( playerState_t *ps, float dt );
 
 //==================================================================
 #endif /* BG_PUBLIC_H_ */

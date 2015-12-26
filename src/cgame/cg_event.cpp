@@ -954,7 +954,8 @@ void CG_EntityEvent( centity_t *cent, vec3_t position )
 		case EV_TAUNT:
 			if ( !cg_noTaunt.integer )
 			{
-				trap_S_StartSound( nullptr, es->number, CHAN_VOICE, CG_CustomSound( es->number, "*taunt.wav" ) );
+                trap_S_StartSound( nullptr, es->number, CHAN_AUTO, cgs.media.watrInSound );
+				//trap_S_StartSound( nullptr, es->number, CHAN_VOICE, CG_CustomSound( es->number, "*taunt.wav" ) );
 			}
 
 			break;

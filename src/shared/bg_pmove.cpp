@@ -3707,6 +3707,64 @@ static void PM_TorsoAnimation()
 }
 
 /*
+ ==============
++PM_AddRecoil
++
++Add recoil to playerState based on used weapon
++==============
++*/
+void PM_AddRecoil( void )
+{
+	const weaponAttributes_t *wa;
+	float rnd, angle, recoil;
+
+	wa = BG_Weapon( pm->ps->weapon );
+
+	if( !wa || !wa->usesRecoil )
+		return;
+
+	recoil = wa->recoilAlpha;
+
+	// recoil modifiers
+	switch( pm->ps->weapon )
+	{
+		case WP_CHAINGUN:
+			if( ( pm->ps->pm_flags & PMF_DUCKED ||
+						BG_InventoryContainsUpgrade( UP_BATTLESUIT, pm->ps->stats ) ) )
+				recoil *= 0.33f;
+			break;
+
+		case WP_LUCIFER_CANNON:
+			if( pm->ps->generic1 == WPM_PRIMARY )
+				recoil *= (float)pm->ps->stats[ STAT_MISC ] / LCANNON_CHARGE_TIME_MAX;
+			else if( pm->ps->generic1 == WPM_SECONDARY )
+				recoil *= 0.1f;
+			break;
+	}
+
+	// generate a random number (from 0 to 1) based on a (shared) seed
+	// uses glibc's linear congruential generator
+//	rnd = (float)( ( pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647 ) / 2147483647.0f;
+//
+//	if( wa->recoilDelta < 179.9f )
+//	{
+//		angle = 90 + LinearRemap( rnd, 0.0, 1.0, -wa->recoilDelta, +wa->recoilDelta );
+//		angle *= M_PI / 180.0f;
+//	}
+//	else
+//		angle = LinearRemap( rnd, 0.0, 1.0, 0, 2.0f * M_PI );
+//
+//	pm->ps->recoilVel[ 0 ] += cos( angle ) * -recoil;
+//	pm->ps->recoilVel[ 1 ] += sin( angle ) * -recoil;
+    //pm->ps->recoil[0] = -100;
+    //pm->ps->recoil[1] = -100;
+    //pm->ps->recoilVel[0] = 10.0;
+    pm->ps->recoilVel[0] = -recoil;
+    pm->ps->recoilVel[1] = -recoil;
+}
+
+
+/*
 ==============
 PM_Weapon
 
@@ -4175,6 +4233,7 @@ static void PM_Weapon()
 
 			pm->ps->generic1 = WPM_TERTIARY;
 			PM_AddEvent( EV_FIRE_WEAPON3 );
+			PM_AddRecoil();
 			addTime = BG_Weapon( pm->ps->weapon )->repeatRate3;
 		}
 		else
@@ -4191,6 +4250,7 @@ static void PM_Weapon()
 		{
 			pm->ps->generic1 = WPM_SECONDARY;
 			PM_AddEvent( EV_FIRE_WEAPON2 );
+			PM_AddRecoil();
 			addTime = BG_Weapon( pm->ps->weapon )->repeatRate2;
 		}
 		else
@@ -4205,6 +4265,7 @@ static void PM_Weapon()
 	{
 		pm->ps->generic1 = WPM_PRIMARY;
 		PM_AddEvent( EV_FIRE_WEAPON );
+		PM_AddRecoil();
 		addTime = BG_Weapon( pm->ps->weapon )->repeatRate1;
 	}
 
@@ -4216,6 +4277,7 @@ static void PM_Weapon()
 			case WP_ALEVEL0:
 				pm->ps->generic1 = WPM_PRIMARY;
 				PM_AddEvent( EV_FIRE_WEAPON );
+				PM_AddRecoil();
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate1;
 				break;
 
@@ -4223,6 +4285,7 @@ static void PM_Weapon()
 			case WP_ALEVEL3_UPG:
 				pm->ps->generic1 = WPM_SECONDARY;
 				PM_AddEvent( EV_FIRE_WEAPON2 );
+				PM_AddRecoil();
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate2;
 				break;
 
@@ -4363,24 +4426,9 @@ static void PM_Weapon()
 		}
 	}
 
-	//FIXME: predicted angles miss a problem??
-	if ( pm->ps->weapon == WP_CHAINGUN )
-	{
-		if ( pm->ps->pm_flags & PMF_DUCKED ||
-		     BG_InventoryContainsUpgrade( UP_BATTLESUIT, pm->ps->stats ) )
-		{
-			pm->ps->delta_angles[ PITCH ] -= ANGLE2SHORT( ( ( random() * 0.5 ) - 0.125 ) * ( 30 / ( float ) addTime ) );
-			pm->ps->delta_angles[ YAW ] -= ANGLE2SHORT( ( ( random() * 0.5 ) - 0.25 ) * ( 30.0 / ( float ) addTime ) );
-		}
-		else
-		{
-			pm->ps->delta_angles[ PITCH ] -= ANGLE2SHORT( ( ( random() * 8 ) - 2 ) * ( 30.0 / ( float ) addTime ) );
-			pm->ps->delta_angles[ YAW ] -= ANGLE2SHORT( ( ( random() * 8 ) - 4 ) * ( 30.0 / ( float ) addTime ) );
-		}
-	}
-
 	pm->ps->weaponTime += addTime;
 }
+
 
 /*
 ================
@@ -4693,6 +4741,7 @@ static void PM_HumanStaminaEffects()
 	}
 }
 
+
 /*
 ================
 PmoveSingle
@@ -4927,6 +4976,12 @@ void PmoveSingle( pmove_t *pmove )
 
 	// weapons
 	PM_Weapon();
+
+	// apply recoil added by PM_AddRecoil
+	// server has to do it _after_ firing so it can't be here
+#ifdef BUILD_CGAME
+	BG_ApplyRecoil( pm->ps, pml.frametime );
+#endif
 
 	// torso animation
 	PM_TorsoAnimation();

@@ -1760,7 +1760,19 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 	// calculate muzzle
 	if ( self->client )
 	{
-		AngleVectors( self->client->ps.viewangles, forward, right, up );
+		vec3_t angles;
+		const weaponAttributes_t *wa;
+
+		VectorCopy( self->client->ps.viewangles, angles );
+
+		wa = BG_Weapon( weapon );
+		if( wa && wa->usesRecoil )
+		{
+			angles[ YAW ] += self->client->ps.recoil[ 0 ];
+			angles[ PITCH ] += self->client->ps.recoil[ 1 ];
+		}
+
+		AngleVectors( angles, forward, right, up );
 		G_CalcMuzzlePoint( self, forward, right, up, muzzle );
 	}
 	else
