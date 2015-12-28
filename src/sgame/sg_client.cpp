@@ -1501,8 +1501,8 @@ static void ClientSpawnCBSE(gentity_t *ent, bool evolving) {
 		//   - Call assignment operators on the new components to transfer state from old entity.
 
 		case PCL_NONE:
-			// TODO: Add SpectatorEntity.
-			return;
+			CLIENT_ENTITY_CREATE(SpectatorEntity);
+			break;
 
 		case PCL_ALIEN_BUILDER0: {
 			CLIENT_ENTITY_CREATE(GrangerEntity);
