@@ -1267,15 +1267,15 @@ typedef struct
 	bool                weapon3Firing;
 
     //recoil view movement
-	bool                startRecoil = false;
-	bool                recoilActive = false;
-	int                 recoilTime = 0;
-	float curpitch = 0;
-	float curyaw = 0;
-	float mptich;
-	float myaw;
-	float slopeyaw;
-	float slopepitch;
+//	bool                startRecoil = false;
+//	bool                recoilActive = false;
+//	int                 recoilTime = 0;
+//	float curpitch = 0;
+//	float curyaw = 0;
+//	float mptich;
+//	float myaw;
+//	float slopeyaw;
+//	float slopepitch;
 
 	int                     poisonedTime;
 

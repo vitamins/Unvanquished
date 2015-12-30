@@ -1468,6 +1468,16 @@ static netField_t playerStateFields[] =
 	,
 	{ PSF( recoilVel[ 1 ] ),       0              , 0 }
 	,
+	{ PSF( recoilOrigin[0] ),      0              , 0 }
+	,
+    { PSF( recoilOrigin[1] ),      0              , 0 }
+	,
+    { PSF( recoilAccum[0] ),       0              , 0 }
+	,
+    { PSF( recoilAccum[1] ),       0              , 0 }
+	,
+    { PSF( recoilWait ),           0             , 0 }
+	,
 	{ PSF( generic1 ),             10             , 0 }
 	,
 	{ PSF( loopSound ),            16             , 0 }

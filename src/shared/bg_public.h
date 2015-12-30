@@ -1605,7 +1605,7 @@ char *BG_strdup( const char *string );
 
 const char *Trans_GenderContext( gender_t gender );
 
-void BG_ApplyRecoil( playerState_t *ps, float dt );
+void BG_ApplyRecoil( playerState_t *ps, int dt );
 
 //==================================================================
 #endif /* BG_PUBLIC_H_ */

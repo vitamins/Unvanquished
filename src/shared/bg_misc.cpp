@@ -2899,7 +2899,7 @@ Offset viewangles based on recoil and fade the recoil
 
 #define RECOIL_MAGIC3 10.0 //lambda
 
-void BG_ApplyRecoil( playerState_t *ps, float dt )
+void BG_ApplyRecoil( playerState_t *ps, int dt)
 {
 	const weaponAttributes_t *wa;
 
@@ -2908,15 +2908,124 @@ void BG_ApplyRecoil( playerState_t *ps, float dt )
 	if( !wa || !wa->usesRecoil )
 		return;
 
-	ps->recoil[ 0 ] += ps->recoilVel[ 0 ] * dt;
-	ps->recoil[ 1 ] += ps->recoilVel[ 1 ] * dt;
+//        {
+//            //recoil is still active, add old recoil value to offset that carries over between shots
+//            //the crosshair will climb higher and higher when shooting before recoil has settled
+//            //for this to work properly the attackRate must be set equal (or higher) to RECOIL_TIME
+//            if(cg.recoilActive)
+//            {
+//                ratio = cg.time - cg.recoilTime;
+//                if(ratio < RECOIL_CENTER_TIME)
+//                {
+//                    ratio = 1.0 - ( ratio - RECOIL_TIME ) / (RECOIL_CENTER_TIME - RECOIL_TIME);
+//                    cg.curpitch += ratio * RECOIL_MPITCH;
+//                    cg.curyaw += ratio * RECOIL_MYAW;
+//                }
+//                cg.recoilTime = cg.time;
+//            }
+//            else
+//            {
+//                cg.recoilActive = true;
+//                cg.recoilTime = cg.time;
+//            }
+//        cg.startRecoil = false;
+//        }
+//        else
+//        {
+//            ratio = cg.time - cg.recoilTime;
+//            if(ratio < RECOIL_CENTER_TIME)
+//            {
+//                if(ratio < RECOIL_TIME)
+//                {
+//                    ratio /= RECOIL_TIME;
+//                    cg.refdefViewAngles[ PITCH ] += ratio * RECOIL_MPITCH;
+//                    cg.refdefViewAngles[ YAW ] += ratio * RECOIL_MYAW;
+//                }
+//                else
+//                {
+//                    ratio = 1.0 - ( ratio - RECOIL_TIME ) / (RECOIL_CENTER_TIME - RECOIL_TIME);
+//                    cg.refdefViewAngles[ PITCH ] += ratio * RECOIL_MPITCH;
+//                    cg.refdefViewAngles[ YAW ] += ratio * RECOIL_MYAW;
+//                }
+//            }
+//            else
+//            {
+//                cg.recoilActive = false;
+//            }
+//        }
+//        cg.refdefViewAngles[ PITCH ] += cg.curpitch;
+//        cg.refdefViewAngles[ YAW ] += cg.curyaw;
 
-	ps->viewangles[ YAW ]   += ps->recoil[ 0 ];
-	ps->viewangles[ PITCH ] += ps->recoil[ 1 ];
 
-	ExponentialFade( ps->recoilVel,     0, RECOIL_MAGIC3, dt );
-	ExponentialFade( ps->recoilVel + 1, 0, RECOIL_MAGIC3, dt );
-	ExponentialFade( ps->recoil,        0, RECOIL_MAGIC3, dt );
-	ExponentialFade( ps->recoil + 1,    0, RECOIL_MAGIC3, dt );
+
+    if(ps->recoilVel[YAW])
+    {
+        ps->delta_angles[ YAW ] += ps->recoilVel[YAW];
+        ps->recoilAccum[YAW] += ps->recoilVel[YAW];
+        ps->recoilVel[YAW] = 0.0;
+    }
+    if(ps->recoilVel[PITCH])
+    {
+        ps->delta_angles[ PITCH ] += ps->recoilVel[PITCH];
+        ps->recoilAccum[PITCH] += ps->recoilVel[PITCH];
+        ps->recoilVel[PITCH] = 0.0;
+    }
+    if(ps->recoilWait > 0)
+    {
+        ps->recoilWait -= dt;
+        if(ps->recoilWait <= 0)
+        {
+            printf( "recoilAccum[PITCH] %f\nrecoilOrigin[PITCH] %f\nviewangles[PITCH] %f\n",ps->recoilAccum[PITCH], ps->recoilOrigin[PITCH], ps->viewangles[PITCH]);
+            //ps->delta_angles[YAW] -= ps->recoilAccum[YAW];
+            ps->delta_angles[YAW] += ANGLE2SHORT(ps->recoilOrigin[ YAW ] - ps->viewangles[YAW]);
+            //If the player aimed higher than accumulated recoil or lower than origin, do not move back, he is probably following a moving target
+            if(ps->viewangles[PITCH] >= (ps->recoilOrigin[PITCH] + SHORT2ANGLE(ps->recoilAccum[PITCH])) && ps->viewangles[PITCH] <= ps->recoilOrigin[PITCH])
+                ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilOrigin[ PITCH ] - ps->viewangles[PITCH]);
+            ps->recoilWait = 0;
+            ps->recoilAccum[YAW] = 0.0;
+            ps->recoilAccum[PITCH] = 0.0;
+        }
+    }
+//
+//    if(ps->recoilWait == -1.0)// && ps->recoilAccum[0] != 0.0)
+//    {
+
+//
+//    }
+
+//	ps->recoil[ 0 ] += ps->recoilVel[ 0 ] * dt;
+//	ps->recoil[ 1 ] += ps->recoilVel[ 1 ] * dt;
+//
+//	ps->viewangles[ YAW ]   += ps->recoil[ 0 ];
+//	ps->viewangles[ PITCH ] += ps->recoil[ 1 ];
+//
+//	ExponentialFade( ps->recoilVel,     0, RECOIL_MAGIC3, dt );
+//	ExponentialFade( ps->recoilVel + 1, 0, RECOIL_MAGIC3, dt );
+//	//ExponentialFade( ps->recoil,        0, RECOIL_MAGIC3, dt );
+//	//ExponentialFade( ps->recoil + 1,    0, RECOIL_MAGIC3, dt );
+//	if(ps->recoil[0] > 0.0)
+//	{
+//        ps->recoil[0] -= dt * RECOIL_MAGIC3;
+//        if(ps->recoil[0] < 0.0)
+//            ps->recoil[0] = 0.0;
+//	}
+//	else if(ps->recoil[0] < 0.0)
+//	{
+//        ps->recoil[0] += dt * RECOIL_MAGIC3;
+//        if(ps->recoil[0] > 0.0)
+//            ps->recoil[0] = 0.0;
+//	}
+//    if(ps->recoil[1] > 0.0)
+//	{
+//        ps->recoil[1] -= dt * RECOIL_MAGIC3;
+//        if(ps->recoil[1] < 0.0)
+//            ps->recoil[1] = 0.0;
+//	}
+//	else if(ps->recoil[1] < 0.0)
+//	{
+//        ps->recoil[1] += dt * RECOIL_MAGIC3;
+//        if(ps->recoil[1] > 0.0)
+//            ps->recoil[1] = 0.0;
+//	}
 
 }

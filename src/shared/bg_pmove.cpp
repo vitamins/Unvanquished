@@ -3713,7 +3713,7 @@ static void PM_TorsoAnimation()
 +Add recoil to playerState based on used weapon
 +==============
 +*/
-void PM_AddRecoil( void )
+void PM_AddRecoil( bool fullAuto )
 {
 	const weaponAttributes_t *wa;
 	float rnd, angle, recoil;
@@ -3759,8 +3759,25 @@ void PM_AddRecoil( void )
     //pm->ps->recoil[0] = -100;
     //pm->ps->recoil[1] = -100;
     //pm->ps->recoilVel[0] = 10.0;
-    pm->ps->recoilVel[0] = -recoil;
-    pm->ps->recoilVel[1] = -recoil;
+    if(fullAuto)
+    {
+        pm->ps->recoilVel[0] = -5.0 * recoil;
+        pm->ps->recoilVel[1] = -5.0 * recoil;
+    }
+    else
+    {
+        //save the orientation where the player fired the first shot
+        //after the player stopped firing we:
+        //- move back exactly to the PITCH value saved in recoilOrigin
+        //- move back by the accumulated YAW value caused by recoil whilst firing
+        pm->ps->recoilOrigin[ YAW ] = pm->ps->viewangles[ YAW ];
+        pm->ps->recoilOrigin[ PITCH ] = pm->ps->viewangles[ PITCH ];
+        pm->ps->recoilVel[0] = -10.0 * recoil;
+        pm->ps->recoilVel[1] = -10.0 * recoil;
+        pm->ps->recoilAccum[YAW] = 0.0;
+        pm->ps->recoilAccum[PITCH] = 0.0;
+    }
+    pm->ps->recoilWait = 1000;
 }
 
 
@@ -3777,6 +3794,7 @@ static void PM_Weapon()
 	bool attack1 = usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK );
 	bool attack2 = usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 );
 	bool attack3 = usercmdButtonPressed( pm->cmd.buttons, BUTTON_USE_HOLDABLE );
+    bool fullAuto;
 
 	// Ignore weapons in some cases
 	if ( pm->ps->persistant[ PERS_SPECSTATE ] != SPECTATOR_NOT )
@@ -3961,7 +3979,13 @@ static void PM_Weapon()
 	if ( pm->ps->weaponTime > 0 )
 	{
 		pm->ps->weaponTime -= pml.msec;
+		// true if player holds the fire button for automatic fire, false if this is the first shot
+		fullAuto = true;
 	}
+	else
+	{
+        fullAuto = false;
+    }
 
 	if ( pm->ps->weaponTime < 0 )
 	{
@@ -4233,7 +4257,7 @@ static void PM_Weapon()
 
 			pm->ps->generic1 = WPM_TERTIARY;
 			PM_AddEvent( EV_FIRE_WEAPON3 );
-			PM_AddRecoil();
+			PM_AddRecoil(fullAuto);
 			addTime = BG_Weapon( pm->ps->weapon )->repeatRate3;
 		}
 		else
@@ -4250,7 +4274,7 @@ static void PM_Weapon()
 		{
 			pm->ps->generic1 = WPM_SECONDARY;
 			PM_AddEvent( EV_FIRE_WEAPON2 );
-			PM_AddRecoil();
+			PM_AddRecoil(fullAuto);
 			addTime = BG_Weapon( pm->ps->weapon )->repeatRate2;
 		}
 		else
@@ -4265,7 +4289,7 @@ static void PM_Weapon()
 	{
 		pm->ps->generic1 = WPM_PRIMARY;
 		PM_AddEvent( EV_FIRE_WEAPON );
-		PM_AddRecoil();
+		PM_AddRecoil(fullAuto);
 		addTime = BG_Weapon( pm->ps->weapon )->repeatRate1;
 	}
 
@@ -4277,7 +4301,7 @@ static void PM_Weapon()
 			case WP_ALEVEL0:
 				pm->ps->generic1 = WPM_PRIMARY;
 				PM_AddEvent( EV_FIRE_WEAPON );
-				PM_AddRecoil();
+				PM_AddRecoil(fullAuto);
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate1;
 				break;
 
@@ -4285,7 +4309,7 @@ static void PM_Weapon()
 			case WP_ALEVEL3_UPG:
 				pm->ps->generic1 = WPM_SECONDARY;
 				PM_AddEvent( EV_FIRE_WEAPON2 );
-				PM_AddRecoil();
+				PM_AddRecoil(fullAuto);
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate2;
 				break;
 
@@ -4980,7 +5004,7 @@ void PmoveSingle( pmove_t *pmove )
 	// apply recoil added by PM_AddRecoil
 	// server has to do it _after_ firing so it can't be here
 #ifdef BUILD_CGAME
-	BG_ApplyRecoil( pm->ps, pml.frametime );
+	BG_ApplyRecoil( pm->ps, pml.msec );
 #endif
 
 	// torso animation

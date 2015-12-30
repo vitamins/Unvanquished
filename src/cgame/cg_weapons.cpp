@@ -1967,11 +1967,12 @@ void CG_AddViewWeapon( playerState_t *ps )
 
     const weaponAttributes_t *wa;
     wa = BG_Weapon( weapon );
-    if( wa && wa->usesRecoil )
-    {
-        angles[ YAW ] +=   ps->recoil[ 0 ] * wa->recoilGamma;
-        angles[ PITCH ] += ps->recoil[ 1 ] * wa->recoilGamma;
-    }
+
+//    if( wa && wa->usesRecoil )
+//    {
+//        angles[ YAW ] +=   ps->recoil[ 0 ] * wa->recoilGamma;
+//        angles[ PITCH ] += ps->recoil[ 1 ] * wa->recoilGamma;
+//    }
 
 
 	AnglesToAxis( angles, hand.axis );

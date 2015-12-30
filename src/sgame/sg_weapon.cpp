@@ -1766,11 +1766,11 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 		VectorCopy( self->client->ps.viewangles, angles );
 
 		wa = BG_Weapon( weapon );
-		if( wa && wa->usesRecoil )
-		{
-			angles[ YAW ] += self->client->ps.recoil[ 0 ];
-			angles[ PITCH ] += self->client->ps.recoil[ 1 ];
-		}
+//		if( wa && wa->usesRecoil )
+//		{
+//			angles[ YAW ] += self->client->ps.recoil[ 0 ];
+//			angles[ PITCH ] += self->client->ps.recoil[ 1 ];
+//		}
 
 		AngleVectors( angles, forward, right, up );
 		G_CalcMuzzlePoint( self, forward, right, up, muzzle );
