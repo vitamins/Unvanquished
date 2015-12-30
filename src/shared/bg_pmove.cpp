@@ -3717,30 +3717,32 @@ void PM_AddRecoil( bool fullAuto )
 {
 	const weaponAttributes_t *wa;
 	float rnd, angle, recoil;
+	float recoilVertical, recoilHorizontal, recoilHorizontalMin, recoilHorizontalMax, recoilHorizontalTolerance, recoilFirstShotMultiplier, recoilDecrease;
+	bool rndLeftRight;
 
 	wa = BG_Weapon( pm->ps->weapon );
 
 	if( !wa || !wa->usesRecoil )
 		return;
 
-	recoil = wa->recoilAlpha;
+//	recoil = wa->recoilAlpha;
 
-	// recoil modifiers
-	switch( pm->ps->weapon )
-	{
-		case WP_CHAINGUN:
-			if( ( pm->ps->pm_flags & PMF_DUCKED ||
-						BG_InventoryContainsUpgrade( UP_BATTLESUIT, pm->ps->stats ) ) )
-				recoil *= 0.33f;
-			break;
-
-		case WP_LUCIFER_CANNON:
-			if( pm->ps->generic1 == WPM_PRIMARY )
-				recoil *= (float)pm->ps->stats[ STAT_MISC ] / LCANNON_CHARGE_TIME_MAX;
-			else if( pm->ps->generic1 == WPM_SECONDARY )
-				recoil *= 0.1f;
-			break;
-	}
+//	// recoil modifiers
+//	switch( pm->ps->weapon )
+//	{
+//		case WP_CHAINGUN:
+//			if( ( pm->ps->pm_flags & PMF_DUCKED ||
+//						BG_InventoryContainsUpgrade( UP_BATTLESUIT, pm->ps->stats ) ) )
+//				recoil *= 0.33f;
+//			break;
+//
+//		case WP_LUCIFER_CANNON:
+//			if( pm->ps->generic1 == WPM_PRIMARY )
+//				recoil *= (float)pm->ps->stats[ STAT_MISC ] / LCANNON_CHARGE_TIME_MAX;
+//			else if( pm->ps->generic1 == WPM_SECONDARY )
+//				recoil *= 0.1f;
+//			break;
+//	}
 
 	// generate a random number (from 0 to 1) based on a (shared) seed
 	// uses glibc's linear congruential generator
@@ -3756,13 +3758,36 @@ void PM_AddRecoil( bool fullAuto )
 //
 //	pm->ps->recoilVel[ 0 ] += cos( angle ) * -recoil;
 //	pm->ps->recoilVel[ 1 ] += sin( angle ) * -recoil;
-    //pm->ps->recoil[0] = -100;
-    //pm->ps->recoil[1] = -100;
-    //pm->ps->recoilVel[0] = 10.0;
+
+	recoilVertical = -150.0;
+	recoilHorizontalMin = 30.0;
+	recoilHorizontalMax = 30.0;
+	recoilHorizontalTolerance = 65.0;
+	recoilFirstShotMultiplier = 2.35;
+
+    //generate a binary single digit random number that is identically distributed
+    rndLeftRight =  1 - 2 * (((pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647) % 2);
+
+    if(recoilHorizontalMin == recoilHorizontalMax)
+        recoilHorizontal = recoilHorizontalMin;
+    else
+    {
+        // generate a random number (from 0 to 1) based on a (shared) seed
+        // uses glibc's linear congruential generator
+        rnd = (float)( ( pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647 ) / 2147483647.0f;
+        recoilHorizontal = rnd * (recoilHorizontalMax - recoilHorizontalMin) + recoilHorizontalMin;
+    }
+
     if(fullAuto)
     {
-        pm->ps->recoilVel[0] = -5.0 * recoil;
-        pm->ps->recoilVel[1] = -5.0 * recoil;
+        //if(pm->ps->recoilAccum[YAW] < (-1 * recoilHorizontalTolerance))
+            // do nothing...recoilHorizontal is already positive
+        if(pm->ps->recoilAccum[YAW] > recoilHorizontalTolerance)
+            recoilHorizontal *= -1;
+        else if(pm->ps->recoilAccum[YAW] > (-1 * recoilHorizontalTolerance))
+            recoilHorizontal *= rndLeftRight;
+        pm->ps->recoilVel[YAW] = recoilHorizontal;
+        pm->ps->recoilVel[PITCH] = recoilVertical;
     }
     else
     {
@@ -3772,12 +3797,14 @@ void PM_AddRecoil( bool fullAuto )
         //- move back by the accumulated YAW value caused by recoil whilst firing
         pm->ps->recoilOrigin[ YAW ] = pm->ps->viewangles[ YAW ];
         pm->ps->recoilOrigin[ PITCH ] = pm->ps->viewangles[ PITCH ];
-        pm->ps->recoilVel[0] = -10.0 * recoil;
-        pm->ps->recoilVel[1] = -10.0 * recoil;
+        recoilHorizontal *= rndLeftRight;
+        pm->ps->recoilVel[YAW] = recoilFirstShotMultiplier * recoilHorizontal;
+        pm->ps->recoilVel[PITCH] = recoilFirstShotMultiplier * recoilVertical;
+
         pm->ps->recoilAccum[YAW] = 0.0;
         pm->ps->recoilAccum[PITCH] = 0.0;
     }
-    pm->ps->recoilWait = 1000;
+    pm->ps->recoilWait = 300;
 }
 
 

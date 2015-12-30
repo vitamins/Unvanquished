@@ -2975,57 +2975,38 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
         ps->recoilWait -= dt;
         if(ps->recoilWait <= 0)
         {
-            printf( "recoilAccum[PITCH] %f\nrecoilOrigin[PITCH] %f\nviewangles[PITCH] %f\n",ps->recoilAccum[PITCH], ps->recoilOrigin[PITCH], ps->viewangles[PITCH]);
-            //ps->delta_angles[YAW] -= ps->recoilAccum[YAW];
-            ps->delta_angles[YAW] += ANGLE2SHORT(ps->recoilOrigin[ YAW ] - ps->viewangles[YAW]);
-            //If the player aimed higher than accumulated recoil or lower than origin, do not move back, he is probably following a moving target
-            if(ps->viewangles[PITCH] >= (ps->recoilOrigin[PITCH] + SHORT2ANGLE(ps->recoilAccum[PITCH])) && ps->viewangles[PITCH] <= ps->recoilOrigin[PITCH])
-                ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilOrigin[ PITCH ] - ps->viewangles[PITCH]);
+            //printf( "recoilAccum[PITCH] %f\nrecoilOrigin[PITCH] %f\nviewangles[PITCH] %f\n",ps->recoilAccum[PITCH], ps->recoilOrigin[PITCH], ps->viewangles[PITCH]);
+            //check if we would move below the first shot by undoing recoil
+            if(ps->viewangles[PITCH] - SHORT2ANGLE(ps->recoilAccum[PITCH]) < ps->recoilOrigin[PITCH])
+                //player either dragged upwards, or held still, undo accumulated vertical recoil
+                ps->delta_angles[PITCH] -= ps->recoilAccum[PITCH];
+            else
+            {
+                //player dragged downwards
+                //check if player dragged down lower than than origin
+                //if(ps->viewangles[PITCH] > ps->recoilOrigin[PITCH])
+                //{
+                    //ps->delta_angles[PITCH] -= ps->recoilAccum[PITCH];
+                //    ps->delta_angles[PITCH] -= 0;
+                //}
+                if(ps->viewangles[PITCH] <= ps->recoilOrigin[PITCH])
+                {
+                //player has compensated recoil, but not too low, thus go back to pitch angle of first shot
+                ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilOrigin[PITCH] - ps->viewangles[PITCH]);
+                }
+            }
+            //undo horizontal recoil
+            ps->delta_angles[YAW] -= ps->recoilAccum[YAW];
+//            ps->delta_angles[YAW] += ANGLE2SHORT(ps->recoilOrigin[ YAW ] - ps->viewangles[YAW]);
+//            //If the player aimed higher than accumulated recoil or lower than origin, do not move back, he is probably following a moving target
+//            if(ps->viewangles[PITCH] >= (ps->recoilOrigin[PITCH] + SHORT2ANGLE(ps->recoilAccum[PITCH])) && ps->viewangles[PITCH] <= ps->recoilOrigin[PITCH])
+//                ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilOrigin[ PITCH ] - ps->viewangles[PITCH]);
             ps->recoilWait = 0;
             ps->recoilAccum[YAW] = 0.0;
             ps->recoilAccum[PITCH] = 0.0;
         }
     }
-//
-//    if(ps->recoilWait == -1.0)// && ps->recoilAccum[0] != 0.0)
-//    {
 
-//
-//    }
 
-//	ps->recoil[ 0 ] += ps->recoilVel[ 0 ] * dt;
-//	ps->recoil[ 1 ] += ps->recoilVel[ 1 ] * dt;
-//
-//	ps->viewangles[ YAW ]   += ps->recoil[ 0 ];
-//	ps->viewangles[ PITCH ] += ps->recoil[ 1 ];
-//
-//	ExponentialFade( ps->recoilVel,     0, RECOIL_MAGIC3, dt );
-//	ExponentialFade( ps->recoilVel + 1, 0, RECOIL_MAGIC3, dt );
-//	//ExponentialFade( ps->recoil,        0, RECOIL_MAGIC3, dt );
-//	//ExponentialFade( ps->recoil + 1,    0, RECOIL_MAGIC3, dt );
-//	if(ps->recoil[0] > 0.0)
-//	{
-//        ps->recoil[0] -= dt * RECOIL_MAGIC3;
-//        if(ps->recoil[0] < 0.0)
-//            ps->recoil[0] = 0.0;
-//	}
-//	else if(ps->recoil[0] < 0.0)
-//	{
-//        ps->recoil[0] += dt * RECOIL_MAGIC3;
-//        if(ps->recoil[0] > 0.0)
-//            ps->recoil[0] = 0.0;
-//	}
-//    if(ps->recoil[1] > 0.0)
-//	{
-//        ps->recoil[1] -= dt * RECOIL_MAGIC3;
-//        if(ps->recoil[1] < 0.0)
-//            ps->recoil[1] = 0.0;
-//	}
-//	else if(ps->recoil[1] < 0.0)
-//	{
-//        ps->recoil[1] += dt * RECOIL_MAGIC3;
-//        if(ps->recoil[1] > 0.0)
-//            ps->recoil[1] = 0.0;
-//	}
 
 }
