@@ -3718,7 +3718,7 @@ void PM_AddRecoil( bool fullAuto )
 	const weaponAttributes_t *wa;
 	float rnd, angle, recoil;
 	float recoilVertical, recoilHorizontal, recoilHorizontalMin, recoilHorizontalMax, recoilHorizontalTolerance, recoilFirstShotMultiplier, recoilDecrease;
-	bool rndLeftRight;
+	float rndLeftRight;
 
 	wa = BG_Weapon( pm->ps->weapon );
 
@@ -3760,13 +3760,13 @@ void PM_AddRecoil( bool fullAuto )
 //	pm->ps->recoilVel[ 1 ] += sin( angle ) * -recoil;
 
 	recoilVertical = -150.0;
-	recoilHorizontalMin = 30.0;
-	recoilHorizontalMax = 30.0;
-	recoilHorizontalTolerance = 65.0;
+	recoilHorizontalMin = 100.0;
+	recoilHorizontalMax = 100.0;
+	recoilHorizontalTolerance = 205.0;
 	recoilFirstShotMultiplier = 2.35;
 
-    //generate a binary single digit random number that is identically distributed
-    rndLeftRight =  1 - 2 * (((pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647) % 2);
+    //generate a single random number that is identically distributed selected from {1, -1}
+    rndLeftRight =  (float) (1 - 2 * (((pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647) % 2));
 
     if(recoilHorizontalMin == recoilHorizontalMax)
         recoilHorizontal = recoilHorizontalMin;
@@ -3797,8 +3797,7 @@ void PM_AddRecoil( bool fullAuto )
         //- move back by the accumulated YAW value caused by recoil whilst firing
         pm->ps->recoilOrigin[ YAW ] = pm->ps->viewangles[ YAW ];
         pm->ps->recoilOrigin[ PITCH ] = pm->ps->viewangles[ PITCH ];
-        recoilHorizontal *= rndLeftRight;
-        pm->ps->recoilVel[YAW] = recoilFirstShotMultiplier * recoilHorizontal;
+        pm->ps->recoilVel[YAW] = recoilFirstShotMultiplier * recoilHorizontal * rndLeftRight;
         pm->ps->recoilVel[PITCH] = recoilFirstShotMultiplier * recoilVertical;
 
         pm->ps->recoilAccum[YAW] = 0.0;
