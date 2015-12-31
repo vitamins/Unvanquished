@@ -1821,7 +1821,7 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_MACHINEGUN:
-					FireBullet( self, RIFLE_SPREAD, RIFLE_DMG, MOD_MACHINEGUN );
+					FireBullet( self, self->client->ps.coneOfFire, RIFLE_DMG, MOD_MACHINEGUN );
 					break;
 
 				case WP_SHOTGUN:

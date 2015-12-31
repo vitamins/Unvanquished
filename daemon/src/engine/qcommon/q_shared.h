@@ -1980,6 +1980,7 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		vec2_t recoilOrigin;
 		vec2_t recoilAccum;
 		int recoilWait;
+		float coneOfFire;
 
 		int stats[ MAX_STATS ];
 		int persistant[ MAX_PERSISTANT ]; // stats that aren't cleared on death

@@ -2898,115 +2898,117 @@ Offset viewangles based on recoil and fade the recoil
 */
 
 #define RECOIL_MAGIC3 10.0 //lambda
+#define RECOIL_RETURN_VEL 4.0
 
 void BG_ApplyRecoil( playerState_t *ps, int dt)
 {
 	const weaponAttributes_t *wa;
+	float comp_dir;
+	float comp_vec[2];
+	float dtf;
 
 	wa = BG_Weapon( ps->weapon );
 
 	if( !wa || !wa->usesRecoil )
 		return;
 
-//        {
-//            //recoil is still active, add old recoil value to offset that carries over between shots
-//            //the crosshair will climb higher and higher when shooting before recoil has settled
-//            //for this to work properly the attackRate must be set equal (or higher) to RECOIL_TIME
-//            if(cg.recoilActive)
-//            {
-//                ratio = cg.time - cg.recoilTime;
-//                if(ratio < RECOIL_CENTER_TIME)
-//                {
-//                    ratio = 1.0 - ( ratio - RECOIL_TIME ) / (RECOIL_CENTER_TIME - RECOIL_TIME);
-//                    cg.curpitch += ratio * RECOIL_MPITCH;
-//                    cg.curyaw += ratio * RECOIL_MYAW;
-//                }
-//                cg.recoilTime = cg.time;
-//            }
-//            else
-//            {
-//                cg.recoilActive = true;
-//                cg.recoilTime = cg.time;
-//            }
-//        cg.startRecoil = false;
-//        }
-//        else
-//        {
-//            ratio = cg.time - cg.recoilTime;
-//            if(ratio < RECOIL_CENTER_TIME)
-//            {
-//                if(ratio < RECOIL_TIME)
-//                {
-//                    ratio /= RECOIL_TIME;
-//                    cg.refdefViewAngles[ PITCH ] += ratio * RECOIL_MPITCH;
-//                    cg.refdefViewAngles[ YAW ] += ratio * RECOIL_MYAW;
-//                }
-//                else
-//                {
-//                    ratio = 1.0 - ( ratio - RECOIL_TIME ) / (RECOIL_CENTER_TIME - RECOIL_TIME);
-//                    cg.refdefViewAngles[ PITCH ] += ratio * RECOIL_MPITCH;
-//                    cg.refdefViewAngles[ YAW ] += ratio * RECOIL_MYAW;
-//                }
-//            }
-//            else
-//            {
-//                cg.recoilActive = false;
-//            }
-//        }
-//        cg.refdefViewAngles[ PITCH ] += cg.curpitch;
-//        cg.refdefViewAngles[ YAW ] += cg.curyaw;
-
-
-
     if(ps->recoilVel[YAW])
     {
+        //add recoil to the side
         ps->delta_angles[ YAW ] += ps->recoilVel[YAW];
         ps->recoilAccum[YAW] += ps->recoilVel[YAW];
         ps->recoilVel[YAW] = 0.0;
     }
     if(ps->recoilVel[PITCH])
     {
+        //add recoil upwards
         ps->delta_angles[ PITCH ] += ps->recoilVel[PITCH];
         ps->recoilAccum[PITCH] += ps->recoilVel[PITCH];
         ps->recoilVel[PITCH] = 0.0;
     }
     if(ps->recoilWait > 0)
     {
+        //check if enough time has passed to start the automatic recoil compenstation
+        //recoilWait should always be a little higher than the weapons refire time
         ps->recoilWait -= dt;
         if(ps->recoilWait <= 0)
         {
-            //printf( "recoilAccum[PITCH] %f\nrecoilOrigin[PITCH] %f\nviewangles[PITCH] %f\n",ps->recoilAccum[PITCH], ps->recoilOrigin[PITCH], ps->viewangles[PITCH]);
-            //check if we would move below the first shot by undoing recoil
-            if(ps->viewangles[PITCH] - SHORT2ANGLE(ps->recoilAccum[PITCH]) < ps->recoilOrigin[PITCH])
-                //player either dragged upwards, or held still, undo accumulated vertical recoil
-                ps->delta_angles[PITCH] -= ps->recoilAccum[PITCH];
-            else
+            //start automatic recoil compensation
+            //check if the player has dragged the mouse downwards to compensate recoil
+            if( (ps->viewangles[PITCH] - SHORT2ANGLE(ps->recoilAccum[PITCH]) ) >= ps->recoilOrigin[PITCH])
             {
-                //player dragged downwards
-                //check if player dragged down lower than than origin
-                //if(ps->viewangles[PITCH] > ps->recoilOrigin[PITCH])
-                //{
-                    //ps->delta_angles[PITCH] -= ps->recoilAccum[PITCH];
-                //    ps->delta_angles[PITCH] -= 0;
-                //}
                 if(ps->viewangles[PITCH] <= ps->recoilOrigin[PITCH])
-                {
-                //player has compensated recoil, but not too low, thus go back to pitch angle of first shot
-                ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilOrigin[PITCH] - ps->viewangles[PITCH]);
-                }
+                    // we are still higher than first shot, go back to pitch angle of first shot
+                    ps->recoilAccum[PITCH] = -ANGLE2SHORT(ps->recoilOrigin[PITCH] - ps->viewangles[PITCH]);
+                else
+                    //player has aimed below the first shot, do not compensate anything
+                    ps->recoilAccum[PITCH] = 0;
             }
-            //undo horizontal recoil
-            ps->delta_angles[YAW] -= ps->recoilAccum[YAW];
-//            ps->delta_angles[YAW] += ANGLE2SHORT(ps->recoilOrigin[ YAW ] - ps->viewangles[YAW]);
-//            //If the player aimed higher than accumulated recoil or lower than origin, do not move back, he is probably following a moving target
-//            if(ps->viewangles[PITCH] >= (ps->recoilOrigin[PITCH] + SHORT2ANGLE(ps->recoilAccum[PITCH])) && ps->viewangles[PITCH] <= ps->recoilOrigin[PITCH])
-//                ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilOrigin[ PITCH ] - ps->viewangles[PITCH]);
-            ps->recoilWait = 0;
-            ps->recoilAccum[YAW] = 0.0;
-            ps->recoilAccum[PITCH] = 0.0;
+            //the "else" part here does nothing => compensate exactly the accumulated recoil
+        ps->recoilWait = -1;
         }
     }
-
-
-
+    if(ps->recoilWait < 0)
+    {
+        //move viewangle for recoil compensation
+        //calculate compensation vector
+        // TODO only do this once and save comp_vec in player state
+        // TODO use vector and normalize function
+        // TODO make sure we hit the target precisely
+        comp_vec[YAW] = (-1) * ps->recoilAccum[YAW];
+        comp_vec[PITCH] = (-1) * ps->recoilAccum[PITCH];
+        float len = sqrt(comp_vec[YAW] * comp_vec[YAW] + comp_vec[PITCH] * comp_vec[PITCH]);
+        comp_vec[YAW] /= len;
+        comp_vec[PITCH] /= len;
+        comp_vec[YAW] *= RECOIL_RETURN_VEL;
+        comp_vec[PITCH] *= RECOIL_RETURN_VEL;
+        dtf = (float) dt;
+        //compensate recoil
+        ps->recoilAccum[YAW] += comp_vec[YAW] * dtf;
+        ps->recoilAccum[PITCH] += comp_vec[PITCH] * dtf;
+        ps->delta_angles[YAW] += comp_vec[YAW] * dtf;
+        ps->delta_angles[PITCH] += comp_vec[PITCH] * dtf;
+        if(ps->recoilAccum[PITCH] >= 0)
+        {
+            ps->recoilAccum[PITCH] = 0;
+            ps->recoilAccum[YAW] = 0;
+            ps->recoilWait = 0;
+        }
+    }
 }
+
+
+//        if(ps->recoilAccum[YAW] != 0.0)
+//        {
+//            //compensate horizontal recoil
+//            if(ps->recoilAccum[YAW] > 0.0)
+//                comp_dir = -1.0;
+//            else
+//                comp_dir = +1.0;
+//
+//            ps->recoilAccum[YAW] += comp_dir * RECOIL_RETURN_VEL * dtf;
+//            if(comp_dir < 0 && ps->recoilAccum[YAW] <= 0)
+//            {
+//                ps->delta_angles[YAW] -= (RECOIL_RETURN_VEL * dtf + ps->recoilAccum[YAW]);
+//                ps->recoilAccum[YAW] = 0;
+//            }
+//            else if(comp_dir > 0 && ps->recoilAccum[YAW] >= 0)
+//            {
+//                ps->delta_angles[YAW] += (RECOIL_RETURN_VEL * dtf - ps->recoilAccum[YAW]);
+//                ps->recoilAccum[YAW] = 0;
+//            }
+//            else
+//                ps->delta_angles[YAW] += comp_dir * RECOIL_RETURN_VEL * dtf;
+//        }
+//        if(ps->recoilAccum[PITCH] != 0.0)
+//        {
+//            //TODO make sure we hit the starting point exactly...
+//            ps->recoilAccum[PITCH] += RECOIL_RETURN_VEL * dtf;
+//            ps->delta_angles[PITCH] += RECOIL_RETURN_VEL * dtf;
+//            if(ps->recoilAccum[PITCH] >= 0)
+//            {
+//                ps->recoilAccum[PITCH] = 0;
+//            }
+//        }
+//        if(ps->recoilAccum[PITCH] == 0.0 && ps->recoilAccum[YAW] == 0.0)
+//            ps->recoilWait = 0;

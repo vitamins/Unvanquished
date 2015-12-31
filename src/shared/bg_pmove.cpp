@@ -3795,15 +3795,19 @@ void PM_AddRecoil( bool fullAuto )
         //after the player stopped firing we:
         //- move back exactly to the PITCH value saved in recoilOrigin
         //- move back by the accumulated YAW value caused by recoil whilst firing
-        pm->ps->recoilOrigin[ YAW ] = pm->ps->viewangles[ YAW ];
-        pm->ps->recoilOrigin[ PITCH ] = pm->ps->viewangles[ PITCH ];
+        if(pm->ps->recoilWait >= 0)
+        {
+            pm->ps->recoilOrigin[ YAW ] = pm->ps->viewangles[ YAW ];
+            pm->ps->recoilOrigin[ PITCH ] = pm->ps->viewangles[ PITCH ];
+            pm->ps->recoilAccum[YAW] = 0.0;
+            pm->ps->recoilAccum[PITCH] = 0.0;
+        }
         pm->ps->recoilVel[YAW] = recoilFirstShotMultiplier * recoilHorizontal * rndLeftRight;
         pm->ps->recoilVel[PITCH] = recoilFirstShotMultiplier * recoilVertical;
 
-        pm->ps->recoilAccum[YAW] = 0.0;
-        pm->ps->recoilAccum[PITCH] = 0.0;
+
     }
-    pm->ps->recoilWait = 300;
+    pm->ps->recoilWait = 100;
 }
 
 
@@ -4735,6 +4739,48 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	}
 }
 
+void PM_SetConeOfFire()
+{
+//	const classAttributes_t *ca;
+//	int      *stats;
+//	bool crouching, stopped, walking;
+//
+//	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS )
+//	{
+//		return;
+//	}
+//
+//	stats     = pm->ps->stats;
+//	ca        = BG_Class( stats[ STAT_CLASS ] );
+//	stopped   = ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 );
+//	crouching = ( pm->ps->pm_flags & PMF_DUCKED );
+//	walking   = usercmdButtonPressed( pm->cmd.buttons, BUTTON_WALKING );
+//
+//	// Use/Restore stamina
+//	if ( stats[ STAT_STATE2 ] & SS2_JETPACK_WARM )
+//	{
+//		pm->ps->coneOfFire = 500;
+//	}
+//	else if ( stopped )
+//	{
+//		pm->ps->coneOfFire = 250;
+//	}
+//	else if ( ( stats[ STAT_STATE ] & SS_SPEEDBOOST ) && !walking && !crouching ) // walk/crouch overrides sprint
+//	{
+//		pm->ps->coneOfFire = 500;
+//	}
+//	else if ( walking || crouching )
+//	{
+//		pm->ps->coneOfFire = 100;
+//	}
+//	else // assume jogging
+//	{
+//		pm->ps->coneOfFire = 400;
+//	}
+    pm->ps->coneOfFire = 0;
+
+}
+
 static void PM_HumanStaminaEffects()
 {
 	const classAttributes_t *ca;
@@ -5023,6 +5069,9 @@ void PmoveSingle( pmove_t *pmove )
 	PM_UpdateViewAngles( pm->ps, &pm->cmd );
 
 	PM_SetWaterLevel();
+
+	// determine cone of fire
+	PM_SetConeOfFire();
 
 	// weapons
 	PM_Weapon();
