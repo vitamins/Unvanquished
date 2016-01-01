@@ -47,11 +47,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define ZOOM_TIME                      150
 #define MUZZLE_FLASH_TIME              20
 
-#define RECOIL_TIME                    1000
-#define RECOIL_CENTER_TIME             1500
-#define RECOIL_MPITCH                  -10
-#define RECOIL_MYAW                    5
-
 #define MAX_STEP_CHANGE                32
 
 #define MAX_VERTS_ON_POLY              10
@@ -1266,17 +1261,6 @@ typedef struct
 	bool                weapon2Firing;
 	bool                weapon3Firing;
 
-    //recoil view movement
-//	bool                startRecoil = false;
-//	bool                recoilActive = false;
-//	int                 recoilTime = 0;
-//	float curpitch = 0;
-//	float curyaw = 0;
-//	float mptich;
-//	float myaw;
-//	float slopeyaw;
-//	float slopepitch;
-
 	int                     poisonedTime;
 
 	vec3_t                  lastNormal; // view smoothage
@@ -1326,8 +1310,6 @@ typedef struct
 	// momentum
 	float                   momentumGained;
 	int                     momentumGainedTime;
-
-	int                     weaponFireTime;
 
 	// beacons
 	cbeacon_t               *beacons[ MAX_CBEACONS ];

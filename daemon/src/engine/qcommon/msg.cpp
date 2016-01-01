@@ -1460,10 +1460,6 @@ static netField_t playerStateFields[] =
 	,
 	{ PSF( damageCount ),          8              , 0 }
 	,
-    { PSF( recoil[ 0 ] ),          0              , 0 }
-	,
-	{ PSF( recoil[ 1 ] ),          0              , 0 }
-	,
 	{ PSF( recoilVel[ 0 ] ),       0              , 0 }
 	,
 	{ PSF( recoilVel[ 1 ] ),       0              , 0 }

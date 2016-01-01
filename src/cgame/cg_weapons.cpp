@@ -1824,7 +1824,7 @@ void CG_AddViewWeapon( playerState_t *ps )
 	static refEntity_t  hand; // static for proper alignment in QVMs
 	centity_t    *cent;
 	clientInfo_t *ci;
-	float        fovOffset, fireOffset = 0;
+	float        fovOffset;
 	vec3_t       angles;
 	weaponInfo_t *wi;
 	weapon_t     weapon = (weapon_t) ps->weapon;
@@ -1929,24 +1929,12 @@ void CG_AddViewWeapon( playerState_t *ps )
 
 	fovOffset = -0.03f * cg.refdef.fov_y;
 
-    if( BG_Weapon( weapon )->fakeFireAnimation )
-	{
-		int delta;
-
-		delta = cg.time - cg.weaponFireTime;
-
-		if( delta < 200 )
-			fireOffset = ( 1.0-(float)delta/200 ) * trap_Cvar_VariableValue( "d1" );
-		else
-			fireOffset = 0;
-	}
-
 	Com_Memset( &hand, 0, sizeof( hand ) );
 
 	// set up gun position
 	CG_CalculateWeaponPosition( hand.origin, angles );
 
-	VectorMA( hand.origin, ( cg_gun_x.value + fovOffset + fireOffset + wi->posOffs[ 0 ] ), cg.refdef.viewaxis[ 0 ], hand.origin );
+	VectorMA( hand.origin, ( cg_gun_x.value + fovOffset + wi->posOffs[ 0 ] ), cg.refdef.viewaxis[ 0 ], hand.origin );
 	if( cg_mirrorgun.integer )
 		VectorMA( hand.origin, -( cg_gun_y.value + wi->posOffs[ 1 ] ), cg.refdef.viewaxis[ 1 ], hand.origin );
 	else
@@ -1964,16 +1952,6 @@ void CG_AddViewWeapon( playerState_t *ps )
 		VectorMA( hand.origin, random() * fraction, cg.refdef.viewaxis[ 1 ],
 		          hand.origin );
 	}
-
-    const weaponAttributes_t *wa;
-    wa = BG_Weapon( weapon );
-
-//    if( wa && wa->usesRecoil )
-//    {
-//        angles[ YAW ] +=   ps->recoil[ 0 ] * wa->recoilGamma;
-//        angles[ PITCH ] += ps->recoil[ 1 ] * wa->recoilGamma;
-//    }
-
 
 	AnglesToAxis( angles, hand.axis );
 	if( cg_mirrorgun.integer ) {
@@ -2722,9 +2700,6 @@ void CG_HandleFireWeapon( centity_t *cent, weaponMode_t weaponMode )
 			trap_S_StartSound( nullptr, es->number, CHAN_WEAPON, wi->wim[ weaponMode ].flashSound[ c ] );
 		}
 	}
-
-	if( es->number == cg.predictedPlayerState.clientNum )
-        cg.weaponFireTime = cg.time;
 }
 
 void CG_HandleFireShotgun( entityState_t *es )

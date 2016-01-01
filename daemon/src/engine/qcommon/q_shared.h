@@ -1975,7 +1975,6 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		int damagePitch;
 		int damageCount;
 
-		vec2_t recoil;
 		vec2_t recoilVel;
 		vec2_t recoilOrigin;
 		vec2_t recoilAccum;

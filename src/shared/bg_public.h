@@ -1267,13 +1267,12 @@ typedef struct
 
 	team_t   team;
     bool usesRecoil;
-	float    recoilAlpha;
-	float    recoilBeta;
-	float    recoilGamma;
-	float    recoilDelta;
-	float    recoilEpsilon;
-
-	bool fakeFireAnimation;
+    float recoilVertical;
+	float recoilHorizontalMin;
+	float recoilHorizontalMax;
+	float recoilHorizontalTolerance;
+	float recoilFirstShotMultiplier;
+    float recoilDecrease;
 } weaponAttributes_t;
 
 // upgrade record

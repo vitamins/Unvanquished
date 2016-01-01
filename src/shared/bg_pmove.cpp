@@ -3716,16 +3716,18 @@ static void PM_TorsoAnimation()
 void PM_AddRecoil( bool fullAuto )
 {
 	const weaponAttributes_t *wa;
-	float rnd, angle, recoil;
-	float recoilVertical, recoilHorizontal, recoilHorizontalMin, recoilHorizontalMax, recoilHorizontalTolerance, recoilFirstShotMultiplier, recoilDecrease;
-	float rndLeftRight;
+	float rnd, rndLeftRight;
+	float recoilVertical, recoilHorizontal, recoilHorizontalMin, recoilHorizontalMax, recoilHorizontalTolerance, recoilFirstShotMultiplier;
 
 	wa = BG_Weapon( pm->ps->weapon );
 
 	if( !wa || !wa->usesRecoil )
 		return;
-
-//	recoil = wa->recoilAlpha;
+    recoilVertical = wa->recoilVertical;
+    recoilHorizontalMin = wa->recoilHorizontalMin;
+    recoilHorizontalMax = wa->recoilHorizontalMax;
+    recoilHorizontalTolerance = wa->recoilHorizontalTolerance;
+    recoilFirstShotMultiplier = wa->recoilFirstShotMultiplier;
 
 //	// recoil modifiers
 //	switch( pm->ps->weapon )
@@ -3744,28 +3746,7 @@ void PM_AddRecoil( bool fullAuto )
 //			break;
 //	}
 
-	// generate a random number (from 0 to 1) based on a (shared) seed
-	// uses glibc's linear congruential generator
-//	rnd = (float)( ( pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647 ) / 2147483647.0f;
-//
-//	if( wa->recoilDelta < 179.9f )
-//	{
-//		angle = 90 + LinearRemap( rnd, 0.0, 1.0, -wa->recoilDelta, +wa->recoilDelta );
-//		angle *= M_PI / 180.0f;
-//	}
-//	else
-//		angle = LinearRemap( rnd, 0.0, 1.0, 0, 2.0f * M_PI );
-//
-//	pm->ps->recoilVel[ 0 ] += cos( angle ) * -recoil;
-//	pm->ps->recoilVel[ 1 ] += sin( angle ) * -recoil;
-
-	recoilVertical = -150.0;
-	recoilHorizontalMin = 100.0;
-	recoilHorizontalMax = 100.0;
-	recoilHorizontalTolerance = 205.0;
-	recoilFirstShotMultiplier = 2.35;
-
-    //generate a single random number that is identically distributed selected from {1, -1}
+    //generate a single random number that is identically distributed selected from {1.0, -1.0}
     rndLeftRight =  (float) (1 - 2 * (((pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647) % 2));
 
     if(recoilHorizontalMin == recoilHorizontalMax)
@@ -3795,6 +3776,7 @@ void PM_AddRecoil( bool fullAuto )
         //after the player stopped firing we:
         //- move back exactly to the PITCH value saved in recoilOrigin
         //- move back by the accumulated YAW value caused by recoil whilst firing
+        //check if automatic recoil decrease is still active, if yes don't overwrite first shot position recoilOrigin
         if(pm->ps->recoilWait >= 0)
         {
             pm->ps->recoilOrigin[ YAW ] = pm->ps->viewangles[ YAW ];
@@ -3804,10 +3786,11 @@ void PM_AddRecoil( bool fullAuto )
         }
         pm->ps->recoilVel[YAW] = recoilFirstShotMultiplier * recoilHorizontal * rndLeftRight;
         pm->ps->recoilVel[PITCH] = recoilFirstShotMultiplier * recoilVertical;
-
-
     }
-    pm->ps->recoilWait = 100;
+    //set the time we wait for the recoil decrease to activate
+    //recoil decrease should never happen while the weapon is fired on full auto
+    //TODO really ensure it never happens, here we just set recoilWait 20ms higher
+    pm->ps->recoilWait = wa->repeatRate1 + 20;
 }
 
 

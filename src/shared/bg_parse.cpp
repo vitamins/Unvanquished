@@ -1797,20 +1797,18 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		else if ( !Q_stricmp( token, "recoil" ) )
 		{
 			wa->usesRecoil = true;
+            PARSE(text, token);
+			wa->recoilVertical = atof( token );
 			PARSE(text, token);
-			wa->recoilAlpha = atof( token );
+			wa->recoilHorizontalMin = atof( token );
 			PARSE(text, token);
-			wa->recoilBeta = atof( token );
+			wa->recoilHorizontalMax = atof( token );
 			PARSE(text, token);
-			wa->recoilGamma = atof( token );
+			wa->recoilHorizontalTolerance = atof( token );
 			PARSE(text, token);
-			wa->recoilDelta = atof( token );
-			PARSE(text, token);
-			wa->recoilEpsilon = atof( token );
-		}
-		else if ( !Q_stricmp( token, "fakeFireAnimation" ) )
-		{
-			wa->fakeFireAnimation = true;
+			wa->recoilFirstShotMultiplier = atof( token );
+            PARSE(text, token);
+			wa->recoilDecrease = atof( token );
 		}
 		else if( (var = BG_FindConfigVar( va( "w_%s_%s", wa->name, token ) ) ) != nullptr )
 		{

@@ -2897,21 +2897,21 @@ Offset viewangles based on recoil and fade the recoil
 ==============
 */
 
-#define RECOIL_MAGIC3 10.0 //lambda
-#define RECOIL_RETURN_VEL 4.0
-
 void BG_ApplyRecoil( playerState_t *ps, int dt)
 {
 	const weaponAttributes_t *wa;
-	float comp_dir;
 	float comp_vec[2];
 	float dtf;
+	float recoilDecrease;
 
 	wa = BG_Weapon( ps->weapon );
 
 	if( !wa || !wa->usesRecoil )
 		return;
 
+    recoilDecrease = wa->recoilDecrease;
+
+    //TODO smooth out adding recoil
     if(ps->recoilVel[YAW])
     {
         //add recoil to the side
@@ -2926,11 +2926,13 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
         ps->recoilAccum[PITCH] += ps->recoilVel[PITCH];
         ps->recoilVel[PITCH] = 0.0;
     }
-    if(ps->recoilWait > 0)
+    else if(ps->recoilWait > 0)
+    //TODO this path is entered also if recoilVel[YAW] != 0 and recoilVel[PITCH] = 0, which shouldn't happen
     {
         //check if enough time has passed to start the automatic recoil compenstation
         //recoilWait should always be a little higher than the weapons refire time
         ps->recoilWait -= dt;
+        //TODO don't decrease at the frame where the weapon was fired
         if(ps->recoilWait <= 0)
         {
             //start automatic recoil compensation
@@ -2944,7 +2946,7 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
                     //player has aimed below the first shot, do not compensate anything
                     ps->recoilAccum[PITCH] = 0;
             }
-            //the "else" part here does nothing => compensate exactly the accumulated recoil
+            //the "else" path here does nothing => compensate exactly the accumulated recoil
         ps->recoilWait = -1;
         }
     }
@@ -2960,8 +2962,8 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
         float len = sqrt(comp_vec[YAW] * comp_vec[YAW] + comp_vec[PITCH] * comp_vec[PITCH]);
         comp_vec[YAW] /= len;
         comp_vec[PITCH] /= len;
-        comp_vec[YAW] *= RECOIL_RETURN_VEL;
-        comp_vec[PITCH] *= RECOIL_RETURN_VEL;
+        comp_vec[YAW] *= recoilDecrease;
+        comp_vec[PITCH] *= recoilDecrease;
         dtf = (float) dt;
         //compensate recoil
         ps->recoilAccum[YAW] += comp_vec[YAW] * dtf;
