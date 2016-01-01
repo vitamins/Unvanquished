@@ -3718,6 +3718,7 @@ void PM_AddRecoil( bool fullAuto )
 	const weaponAttributes_t *wa;
 	float rnd, rndLeftRight;
 	float recoilVertical, recoilHorizontal, recoilHorizontalMin, recoilHorizontalMax, recoilHorizontalTolerance, recoilFirstShotMultiplier;
+//	float recoilAngle, recoilAngleMin, recoilAngleMax;
 
 	wa = BG_Weapon( pm->ps->weapon );
 
@@ -3728,6 +3729,8 @@ void PM_AddRecoil( bool fullAuto )
     recoilHorizontalMax = wa->recoilHorizontalMax;
     recoilHorizontalTolerance = wa->recoilHorizontalTolerance;
     recoilFirstShotMultiplier = wa->recoilFirstShotMultiplier;
+//    recoilAngleMin = wa->recoilAngleMin;
+//    recoilAngleMax = wa->recoilAngleMax;
 
 //	// recoil modifiers
 //	switch( pm->ps->weapon )
@@ -3746,9 +3749,11 @@ void PM_AddRecoil( bool fullAuto )
 //			break;
 //	}
 
+    //horizontal recoil direction
     //generate a single random number that is identically distributed selected from {1.0, -1.0}
     rndLeftRight =  (float) (1 - 2 * (((pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647) % 2));
 
+    //horizontal recoil length
     if(recoilHorizontalMin == recoilHorizontalMax)
         recoilHorizontal = recoilHorizontalMin;
     else
@@ -3759,16 +3764,26 @@ void PM_AddRecoil( bool fullAuto )
         recoilHorizontal = rnd * (recoilHorizontalMax - recoilHorizontalMin) + recoilHorizontalMin;
     }
 
+    //recoil angle (bias)
+//    if(recoilAngleMin == recoilAngleMax)
+//        recoilAngle = recoilAngleMin;
+//    else
+//    {
+//        // generate a random number (from 0 to 1) based on a (shared) seed
+//        // uses glibc's linear congruential generator
+//        rnd = (float)( ( pm->cmd.serverTime * 1103515245 + 12345 ) & 2147483647 ) / 2147483647.0f;
+//        recoilAngle = rnd * (recoilAngleMax - recoilAngleMin) + recoilAngleMin;
+//    }
+
     if(fullAuto)
     {
         //if(pm->ps->recoilAccum[YAW] < (-1 * recoilHorizontalTolerance))
             // do nothing...recoilHorizontal is already positive
+        //TODO compare to second instance of recoilAccum that is not subject to rotation by recoil angle here
         if(pm->ps->recoilAccum[YAW] > recoilHorizontalTolerance)
             recoilHorizontal *= -1;
         else if(pm->ps->recoilAccum[YAW] > (-1 * recoilHorizontalTolerance))
             recoilHorizontal *= rndLeftRight;
-        pm->ps->recoilVel[YAW] = recoilHorizontal;
-        pm->ps->recoilVel[PITCH] = recoilVertical;
     }
     else
     {
@@ -3784,9 +3799,25 @@ void PM_AddRecoil( bool fullAuto )
             pm->ps->recoilAccum[YAW] = 0.0;
             pm->ps->recoilAccum[PITCH] = 0.0;
         }
-        pm->ps->recoilVel[YAW] = recoilFirstShotMultiplier * recoilHorizontal * rndLeftRight;
-        pm->ps->recoilVel[PITCH] = recoilFirstShotMultiplier * recoilVertical;
+        recoilHorizontal *= recoilFirstShotMultiplier * rndLeftRight;
+        recoilVertical *= recoilFirstShotMultiplier;
     }
+    //angled recoil
+//TODO commented out because angled recoil requires a second instance of recoilAccum that counts the accumulated recoil without rotation by recoil angle
+//    if(recoilAngle == 0.0)
+//    {
+        pm->ps->recoilVel[YAW] = recoilHorizontal;
+        pm->ps->recoilVel[PITCH] = recoilVertical;
+//    }
+//    else
+//    {
+//        //printf("recoil Angle ohne pi %f", recoilAngle);
+//        recoilAngle *= M_PI / 180.0;
+//        pm->ps->recoilVel[YAW] = cos(recoilAngle) * recoilHorizontal + sin(recoilAngle) * recoilVertical;
+//        pm->ps->recoilVel[PITCH] = cos(recoilAngle) * recoilVertical - sin(recoilAngle) * recoilHorizontal;
+//        //printf("recoil Angle %f YAW %f PITCH %f recoilHorizontal %f recoilVertical %f", recoilAngle, pm->ps->recoilVel[YAW], pm->ps->recoilVel[PITCH], recoilHorizontal, recoilVertical);
+//    }
+
     //set the time we wait for the recoil decrease to activate
     //recoil decrease should never happen while the weapon is fired on full auto
     //TODO really ensure it never happens, here we just set recoilWait 20ms higher

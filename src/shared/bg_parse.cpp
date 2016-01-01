@@ -1813,6 +1813,10 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 			wa->recoilFirstShotMultiplier = atof( token );
             PARSE(text, token);
 			wa->recoilDecrease = atof( token );
+            PARSE(text, token);
+			wa->recoilAngleMin = atof( token );
+            PARSE(text, token);
+			wa->recoilAngleMax = atof( token );
 		}
 		else if( (var = BG_FindConfigVar( va( "w_%s_%s", wa->name, token ) ) ) != nullptr )
 		{

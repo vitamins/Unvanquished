@@ -2968,13 +2968,19 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
         //compensate recoil
         ps->recoilAccum[YAW] += comp_vec[YAW] * dtf;
         ps->recoilAccum[PITCH] += comp_vec[PITCH] * dtf;
-        ps->delta_angles[YAW] += comp_vec[YAW] * dtf;
-        ps->delta_angles[PITCH] += comp_vec[PITCH] * dtf;
         if(ps->recoilAccum[PITCH] >= 0)
         {
+            //we passed the origin, now move exactly to the origin
+            ps->delta_angles[PITCH] += comp_vec[PITCH] * dtf - ps->recoilAccum[PITCH];
+            ps->delta_angles[YAW] += comp_vec[YAW] * dtf - ps->recoilAccum[YAW];
             ps->recoilAccum[PITCH] = 0;
             ps->recoilAccum[YAW] = 0;
             ps->recoilWait = 0;
+        }
+        else
+        {
+            ps->delta_angles[YAW] += comp_vec[YAW] * dtf;
+            ps->delta_angles[PITCH] += comp_vec[PITCH] * dtf;
         }
     }
 }

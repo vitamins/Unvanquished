@@ -1274,6 +1274,8 @@ typedef struct
 	float recoilHorizontalTolerance;
 	float recoilFirstShotMultiplier;
     float recoilDecrease;
+    float recoilAngleMin;
+    float recoilAngleMax;
 } weaponAttributes_t;
 
 // upgrade record
