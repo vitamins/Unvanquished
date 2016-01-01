@@ -955,7 +955,7 @@ static int CG_CalcFov()
 		}
 
 		// account for zooms
-		zoomFov = BG_Weapon( cg.predictedPlayerState.weapon )->zoomFov * 0.75f;
+		zoomFov = attribFov / BG_Weapon( cg.predictedPlayerState.weapon )->zoomFactor;
 
 		if ( zoomFov < 1.0f )
 		{
@@ -987,6 +987,7 @@ static int CG_CalcFov()
 				if ( !usercmdButtonPressed( cmd.buttons, BUTTON_ATTACK2 ) || cg.snap->ps.weaponstate == WEAPON_RELOADING )
 				{
 					cg.zoomed = false;
+					cg.ironsight = BG_Weapon( cg.predictedPlayerState.weapon )->ironsight;
 					cg.zoomTime = std::min( cg.time,
 					                   cg.time + cg.time - cg.zoomTime - ZOOM_TIME );
 				}
@@ -1004,6 +1005,7 @@ static int CG_CalcFov()
 				if ( usercmdButtonPressed( cmd.buttons, BUTTON_ATTACK2 ) && cg.snap->ps.weaponstate != WEAPON_RELOADING )
 				{
 					cg.zoomed = true;
+                    cg.ironsight = BG_Weapon( cg.predictedPlayerState.weapon )->ironsight;
 					cg.zoomTime = std::min( cg.time,
 					                   cg.time + cg.time - cg.zoomTime - ZOOM_TIME );
 				}
@@ -1012,6 +1014,7 @@ static int CG_CalcFov()
 		else if ( cg.zoomed )
 		{
 			cg.zoomed = false;
+            cg.ironsight = BG_Weapon( cg.predictedPlayerState.weapon )->ironsight;
 		}
 	}
 
@@ -1404,7 +1407,7 @@ static bool CG_InstantCgradingEffectAndFade( const playerState_t* ps, qhandle_t*
 {
 	Q_UNUSED(ps);
 
-	if (cg.zoomed)
+	if (cg.zoomed && !cg.ironsight)
 	{
 		*effect = cgs.media.tealCgrade;
 		*fade = 0.4f;

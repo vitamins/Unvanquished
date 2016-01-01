@@ -1182,6 +1182,7 @@ typedef struct
 
 	// zoom key
 	bool zoomed;
+	bool ironsight;
 	int      zoomTime;
 	float    zoomSensitivity;
 

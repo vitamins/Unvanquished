@@ -1260,7 +1260,8 @@ typedef struct
 	bool hasThirdMode;
 
 	bool canZoom;
-	float    zoomFov;
+	bool ironsight;
+	float    zoomFactor;
 
 	bool purchasable;
 	bool longRanged;

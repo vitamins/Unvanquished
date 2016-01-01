@@ -1773,11 +1773,15 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		{
 			wa->canZoom = true;
 		}
-		else if ( !Q_stricmp( token, "zoomFov" ) )
+        else if ( !Q_stricmp( token, "ironsight" ) )
+		{
+			wa->ironsight = true;
+		}
+		else if ( !Q_stricmp( token, "zoomFactor" ) )
 		{
 			PARSE(text, token);
 
-			wa->zoomFov = atof( token );
+			wa->zoomFactor = atof( token );
 		}
 		else if ( !Q_stricmp( token, "team" ) )
 		{
