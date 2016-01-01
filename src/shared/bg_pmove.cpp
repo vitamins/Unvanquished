@@ -1893,6 +1893,9 @@ static void PM_ClimbMove()
 		}
 	}
 
+    if ( BG_Weapon( pm->ps->weapon )->canZoom && usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 ) )
+        wishspeed *= 0.5;
+
 	// when a player gets hit, they temporarily lose
 	// full control, which allows them to be moved a bit
 	if ( ( pml.groundTrace.surfaceFlags & SURF_SLICK ) || pm->ps->pm_flags & PMF_TIME_KNOCKBACK )
@@ -2029,6 +2032,9 @@ static void PM_WalkMove()
 			wishspeed = pm->ps->speed * waterScale;
 		}
 	}
+
+    if ( BG_Weapon( pm->ps->weapon )->canZoom && usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 ) )
+        wishspeed *= 0.5;
 
 	// when a player gets hit, they temporarily lose
 	// full control, which allows them to be moved a bit
@@ -4752,44 +4758,66 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 
 void PM_SetConeOfFire()
 {
-//	const classAttributes_t *ca;
-//	int      *stats;
-//	bool crouching, stopped, walking;
-//
-//	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS )
-//	{
-//		return;
-//	}
-//
-//	stats     = pm->ps->stats;
-//	ca        = BG_Class( stats[ STAT_CLASS ] );
-//	stopped   = ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 );
-//	crouching = ( pm->ps->pm_flags & PMF_DUCKED );
-//	walking   = usercmdButtonPressed( pm->cmd.buttons, BUTTON_WALKING );
-//
-//	// Use/Restore stamina
-//	if ( stats[ STAT_STATE2 ] & SS2_JETPACK_WARM )
-//	{
-//		pm->ps->coneOfFire = 500;
-//	}
-//	else if ( stopped )
-//	{
-//		pm->ps->coneOfFire = 250;
-//	}
-//	else if ( ( stats[ STAT_STATE ] & SS_SPEEDBOOST ) && !walking && !crouching ) // walk/crouch overrides sprint
-//	{
-//		pm->ps->coneOfFire = 500;
-//	}
-//	else if ( walking || crouching )
-//	{
-//		pm->ps->coneOfFire = 100;
-//	}
-//	else // assume jogging
-//	{
-//		pm->ps->coneOfFire = 400;
-//	}
-    pm->ps->coneOfFire = 0;
+	const classAttributes_t *ca;
+	int      *stats;
+	bool crouching, stopped, walking;
+    bool ads;
 
+	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS )
+	{
+		return;
+	}
+
+	stats     = pm->ps->stats;
+	ca        = BG_Class( stats[ STAT_CLASS ] );
+	stopped   = ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 );
+	crouching = ( pm->ps->pm_flags & PMF_DUCKED );
+	walking   = usercmdButtonPressed( pm->cmd.buttons, BUTTON_WALKING );
+    ads = ( BG_Weapon( pm->ps->weapon )->canZoom && usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 ) );
+
+
+	if ( stats[ STAT_STATE2 ] & SS2_JETPACK_WARM )
+	{
+		pm->ps->coneOfFire = 2500;
+	}
+	else if ( stopped )
+	{
+        if(crouching)
+            if(ads)
+                pm->ps->coneOfFire = 50;
+            else
+                pm->ps->coneOfFire = 500;
+        else
+            if(ads)
+                pm->ps->coneOfFire = 50;
+            else
+                pm->ps->coneOfFire = 750;
+	}
+	else if ( ( stats[ STAT_STATE ] & SS_SPEEDBOOST ) && !walking && !crouching ) // walk/crouch overrides sprint
+	{
+		pm->ps->coneOfFire = 2500;
+	}
+	else if (walking)
+	{
+        if(ads)
+            pm->ps->coneOfFire = 100;
+        else
+            pm->ps->coneOfFire = 750;
+	}
+	else if (crouching)
+	{
+        if(ads)
+            pm->ps->coneOfFire = 100;
+        else
+            pm->ps->coneOfFire = 750;
+	}
+	else // assume jogging
+	{
+        if(ads)
+            pm->ps->coneOfFire = 180;
+        else
+            pm->ps->coneOfFire = 1000;
+	}
 }
 
 static void PM_HumanStaminaEffects()
