@@ -4232,27 +4232,24 @@ static void PM_Weapon()
 
 			break;
 
-		case WP_MASS_DRIVER:
-			attack2 = attack3 = false;
-			// attack2 is handled on the client for zooming (cg_view.c)
-
-			if ( !attack1 )
-			{
-				pm->ps->weaponTime = 0;
-				pm->ps->weaponstate = WEAPON_READY;
-				return;
-			}
-
-			break;
-
 		default:
-			if ( !attack1 && !attack2 && !attack3 )
+            if(BG_Weapon( pm->ps->weapon )->canZoom && attack2)
+            {
+                attack2 = attack3 = false;
+                // attack2 is handled on the client for zooming (cg_view.c)
+                if ( !attack1 )
+                {
+                    pm->ps->weaponTime = 0;
+                    pm->ps->weaponstate = WEAPON_READY;
+                    return;
+                }
+            }
+            else if ( !attack1 && !attack2 && !attack3 )
 			{
 				pm->ps->weaponTime = 0;
 				pm->ps->weaponstate = WEAPON_READY;
 				return;
 			}
-
 			break;
 	}
 
