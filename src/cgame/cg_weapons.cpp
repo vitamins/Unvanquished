@@ -1396,6 +1396,16 @@ static void CG_CalculateWeaponPosition( vec3_t out_origin, vec3_t out_angles )
 	right = Vec3::Load( cg.refdef.viewaxis[ 1 ] );
 	up = Vec3::Load( cg.refdef.viewaxis[ 2 ] );
 
+
+    if(cg.zoomed && cg.ironsight)
+	{
+        origin += up * 2.8;
+        origin += right * 3.3;
+        //angles[YAW] += 1.0;
+	}
+	else
+	{
+
 	// on odd legs, invert some angles
 	scale = ( cg.bobcycle & 1 ? -1 : 1 ) * cg.xyspeed;
 
@@ -1434,6 +1444,7 @@ static void CG_CalculateWeaponPosition( vec3_t out_origin, vec3_t out_angles )
 	origin += up * atan( offsets.angvel[ 0 ] * scaleY ) * limitY;
 	origin += right * atan( offsets.angvel[ 1 ] * scaleX ) * limitX;
 
+
 	// FIXME: is this of any use?
 	/*if( !weapon->md5 && !weapon->noDrift )
 	{
@@ -1457,6 +1468,7 @@ static void CG_CalculateWeaponPosition( vec3_t out_origin, vec3_t out_angles )
 		fracsin = sin( cg.time * 0.001 );
 		angles += Vec3( scale * fracsin * 0.01 );
 	}*/
+	}
 
 	origin.Store( out_origin );
 	angles.Store( out_angles );
