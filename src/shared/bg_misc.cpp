@@ -2954,7 +2954,7 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
     {
         //move viewangle for recoil compensation
         //calculate compensation vector
-        // TODO only do this once and save comp_vec in player state
+        // TODO only calculate it once and save comp_vec in player state
         // TODO use vector and normalize function
         // TODO make sure we hit the target precisely
         comp_vec[YAW] = (-1) * ps->recoilAccum[YAW];
@@ -2984,39 +2984,3 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
         }
     }
 }
-
-
-//        if(ps->recoilAccum[YAW] != 0.0)
-//        {
-//            //compensate horizontal recoil
-//            if(ps->recoilAccum[YAW] > 0.0)
-//                comp_dir = -1.0;
-//            else
-//                comp_dir = +1.0;
-//
-//            ps->recoilAccum[YAW] += comp_dir * RECOIL_RETURN_VEL * dtf;
-//            if(comp_dir < 0 && ps->recoilAccum[YAW] <= 0)
-//            {
-//                ps->delta_angles[YAW] -= (RECOIL_RETURN_VEL * dtf + ps->recoilAccum[YAW]);
-//                ps->recoilAccum[YAW] = 0;
-//            }
-//            else if(comp_dir > 0 && ps->recoilAccum[YAW] >= 0)
-//            {
-//                ps->delta_angles[YAW] += (RECOIL_RETURN_VEL * dtf - ps->recoilAccum[YAW]);
-//                ps->recoilAccum[YAW] = 0;
-//            }
-//            else
-//                ps->delta_angles[YAW] += comp_dir * RECOIL_RETURN_VEL * dtf;
-//        }
-//        if(ps->recoilAccum[PITCH] != 0.0)
-//        {
-//            //TODO make sure we hit the starting point exactly...
-//            ps->recoilAccum[PITCH] += RECOIL_RETURN_VEL * dtf;
-//            ps->delta_angles[PITCH] += RECOIL_RETURN_VEL * dtf;
-//            if(ps->recoilAccum[PITCH] >= 0)
-//            {
-//                ps->recoilAccum[PITCH] = 0;
-//            }
-//        }
-//        if(ps->recoilAccum[PITCH] == 0.0 && ps->recoilAccum[YAW] == 0.0)
-//            ps->recoilWait = 0;
