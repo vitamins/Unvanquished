@@ -1276,6 +1276,18 @@ typedef struct
     float recoilDecrease;
     float recoilAngleMin;
     float recoilAngleMax;
+    float cofAimMax;
+    float cofHipMax;
+    float cofAimCrouchStill;
+    float cofHipCrouchStill;
+    float cofAimStandStill;
+    float cofHipStandStill;
+    float cofAimCrouchMove;
+    float cofHipCrouchMove;
+    float cofAimStandMove;
+    float cofHipStandMove;
+    float bloomPerShotHip;
+    float bloomPerShotAim;
 } weaponAttributes_t;
 
 // upgrade record

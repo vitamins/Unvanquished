@@ -1818,6 +1818,36 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
             PARSE(text, token);
 			wa->recoilAngleMax = atof( token );
 		}
+        else if ( !Q_stricmp( token, "accuracyHip" ) )
+		{
+            PARSE(text, token);
+			wa->cofHipCrouchStill = atof( token );
+			PARSE(text, token);
+			wa->cofHipCrouchMove = atof( token );
+			PARSE(text, token);
+			wa->cofHipStandStill = atof( token );
+			PARSE(text, token);
+			wa->cofHipStandMove = atof( token );
+			PARSE(text, token);
+			wa->cofHipMax = atof( token );
+            PARSE(text, token);
+			wa->bloomPerShotHip = atof( token );
+        }
+        else if ( !Q_stricmp( token, "accuracyAim" ) )
+		{
+            PARSE(text, token);
+			wa->cofAimCrouchStill = atof( token );
+			PARSE(text, token);
+			wa->cofAimCrouchMove = atof( token );
+			PARSE(text, token);
+			wa->cofAimStandStill = atof( token );
+			PARSE(text, token);
+			wa->cofAimStandMove = atof( token );
+			PARSE(text, token);
+			wa->cofAimMax = atof( token );
+            PARSE(text, token);
+			wa->bloomPerShotAim = atof( token );
+        }
 		else if( (var = BG_FindConfigVar( va( "w_%s_%s", wa->name, token ) ) ) != nullptr )
 		{
 			BG_ParseConfigVar( var, &text, filename );

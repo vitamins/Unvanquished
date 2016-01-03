@@ -3712,6 +3712,15 @@ static void PM_TorsoAnimation()
 	}
 }
 
+void PM_AddBloomPerShot()
+{
+		//cone of fire increase from firing a shot
+		if(BG_Weapon( pm->ps->weapon )->canZoom && usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 ) )
+            pm->ps->coneOfFire += BG_Weapon( pm->ps->weapon )->bloomPerShotAim;
+        else
+            pm->ps->coneOfFire += BG_Weapon( pm->ps->weapon )->bloomPerShotHip;
+}
+
 /*
  ==============
 +PM_AddRecoil
@@ -4305,6 +4314,7 @@ static void PM_Weapon()
 			pm->ps->generic1 = WPM_TERTIARY;
 			PM_AddEvent( EV_FIRE_WEAPON3 );
 			PM_AddRecoil(fullAuto);
+			PM_AddBloomPerShot();
 			addTime = BG_Weapon( pm->ps->weapon )->repeatRate3;
 		}
 		else
@@ -4322,6 +4332,7 @@ static void PM_Weapon()
 			pm->ps->generic1 = WPM_SECONDARY;
 			PM_AddEvent( EV_FIRE_WEAPON2 );
 			PM_AddRecoil(fullAuto);
+            PM_AddBloomPerShot();
 			addTime = BG_Weapon( pm->ps->weapon )->repeatRate2;
 		}
 		else
@@ -4337,6 +4348,7 @@ static void PM_Weapon()
 		pm->ps->generic1 = WPM_PRIMARY;
 		PM_AddEvent( EV_FIRE_WEAPON );
 		PM_AddRecoil(fullAuto);
+        PM_AddBloomPerShot();
 		addTime = BG_Weapon( pm->ps->weapon )->repeatRate1;
 	}
 
@@ -4349,6 +4361,7 @@ static void PM_Weapon()
 				pm->ps->generic1 = WPM_PRIMARY;
 				PM_AddEvent( EV_FIRE_WEAPON );
 				PM_AddRecoil(fullAuto);
+                PM_AddBloomPerShot();
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate1;
 				break;
 
@@ -4357,6 +4370,7 @@ static void PM_Weapon()
 				pm->ps->generic1 = WPM_SECONDARY;
 				PM_AddEvent( EV_FIRE_WEAPON2 );
 				PM_AddRecoil(fullAuto);
+                PM_AddBloomPerShot();
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate2;
 				break;
 
@@ -4496,7 +4510,6 @@ static void PM_Weapon()
 			pm->ps->ammo = 0;
 		}
 	}
-
 	pm->ps->weaponTime += addTime;
 }
 
@@ -4756,68 +4769,83 @@ void PM_UpdateViewAngles( playerState_t *ps, const usercmd_t *cmd )
 	}
 }
 
-void PM_SetConeOfFire()
+#define CONEOFFIRE_DECREASE_MS 10
+
+
+void PM_SetConeOfFire(int dt)
 {
-	const classAttributes_t *ca;
+    const weaponAttributes_t *wa;
 	int      *stats;
 	bool crouching, stopped, walking;
     bool ads;
+    float cof, cofMin, cofMax;
 
 	if ( pm->ps->persistant[ PERS_TEAM ] != TEAM_HUMANS )
 	{
 		return;
 	}
 
+	wa = BG_Weapon( pm->ps->weapon );
 	stats     = pm->ps->stats;
-	ca        = BG_Class( stats[ STAT_CLASS ] );
 	stopped   = ( pm->cmd.forwardmove == 0 && pm->cmd.rightmove == 0 );
 	crouching = ( pm->ps->pm_flags & PMF_DUCKED );
 	walking   = usercmdButtonPressed( pm->cmd.buttons, BUTTON_WALKING );
-    ads = ( BG_Weapon( pm->ps->weapon )->canZoom && usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 ) );
+    ads = (wa->canZoom && usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 ) );
+
+    if(ads)
+        cofMax = wa->cofAimMax;
+    else
+        cofMax = wa->cofHipMax;
 
 
 	if ( stats[ STAT_STATE2 ] & SS2_JETPACK_WARM )
 	{
-		pm->ps->coneOfFire = 2500;
+		cofMin = wa->cofHipMax;
 	}
 	else if ( stopped )
 	{
         if(crouching)
             if(ads)
-                pm->ps->coneOfFire = 50;
+                cofMin = wa->cofAimCrouchStill;
             else
-                pm->ps->coneOfFire = 500;
+                cofMin = wa->cofHipCrouchStill;
         else
             if(ads)
-                pm->ps->coneOfFire = 50;
+                cofMin = wa->cofAimStandStill;
             else
-                pm->ps->coneOfFire = 750;
+                cofMin = wa->cofHipStandStill;
 	}
 	else if ( ( stats[ STAT_STATE ] & SS_SPEEDBOOST ) && !walking && !crouching ) // walk/crouch overrides sprint
 	{
-		pm->ps->coneOfFire = 2500;
+		cofMin = wa->cofHipMax;
 	}
-	else if (walking)
+	else if (walking || crouching)
 	{
         if(ads)
-            pm->ps->coneOfFire = 100;
+            cofMin = wa->cofAimCrouchMove;
         else
-            pm->ps->coneOfFire = 750;
-	}
-	else if (crouching)
-	{
-        if(ads)
-            pm->ps->coneOfFire = 100;
-        else
-            pm->ps->coneOfFire = 750;
+            cofMin = wa->cofHipCrouchMove;
 	}
 	else // assume jogging
 	{
         if(ads)
-            pm->ps->coneOfFire = 180;
+            cofMin = wa->cofAimStandMove;
         else
-            pm->ps->coneOfFire = 1000;
+            cofMin = wa->cofHipStandMove;
 	}
+
+	//TODO when spawning initialize coneOfFire with cofMin
+	cof = pm->ps->coneOfFire;
+
+    //automatic decrease, is deactivated for the refire time after firing
+    if(pm->ps->weaponTime == 0)
+        cof -= CONEOFFIRE_DECREASE_MS * dt;
+
+	if(cof > cofMax)
+        cof = cofMax;
+    if(cof < cofMin)
+        cof = cofMin;
+    pm->ps->coneOfFire = cof;
 }
 
 static void PM_HumanStaminaEffects()
@@ -5109,11 +5137,10 @@ void PmoveSingle( pmove_t *pmove )
 
 	PM_SetWaterLevel();
 
-	// determine cone of fire
-	PM_SetConeOfFire();
-
 	// weapons
 	PM_Weapon();
+
+	PM_SetConeOfFire(pml.msec);
 
 	// apply recoil added by PM_AddRecoil
 	// server has to do it _after_ firing so it can't be here
