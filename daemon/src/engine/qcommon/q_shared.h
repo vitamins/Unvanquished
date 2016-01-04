@@ -49,7 +49,7 @@ Maryland 20850 USA.
 #define PRODUCT_NAME            "Unvanquished"
 #define PRODUCT_NAME_UPPER      "UNVANQUISHED" // Case, No spaces
 #define PRODUCT_NAME_LOWER      "unvanquished" // No case, No spaces
-#define PRODUCT_VERSION         "0.46"
+#define PRODUCT_VERSION         "0.47"
 
 #define ENGINE_NAME             "Daemon Engine"
 #define ENGINE_VERSION          PRODUCT_VERSION
@@ -88,7 +88,6 @@ void ignore_result(T) {}
 
 // C standard library headers
 #include <assert.h>
-#include <ctype.h>
 #include <errno.h>
 //#include <fenv.h>
 #include <float.h>

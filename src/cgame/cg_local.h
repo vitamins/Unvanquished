@@ -1784,7 +1784,9 @@ typedef enum
 {
   CG_ALTSHADER_DEFAULT, // must be first
   CG_ALTSHADER_UNPOWERED,
-  CG_ALTSHADER_DEAD
+  CG_ALTSHADER_DEAD,
+  CG_ALTSHADER_IDLE,
+  CG_ALTSHADER_IDLE2
 } altShader_t;
 
 //==============================================================================
