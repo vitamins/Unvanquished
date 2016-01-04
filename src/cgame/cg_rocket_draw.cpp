@@ -508,7 +508,12 @@ public:
 		// set size
 //		w = h = wi->crossHairSize * cg_crosshairSize.value;
 //		w *= cgs.aspectScale;
-        w = h = cg.snap->ps.coneOfFire / 2.0;
+        w = h = cg.snap->ps.coneOfFire * 100.0;
+        if(w < 30.0)
+        {
+            w = 30.0;
+            h = 30.0;
+        }
         w *= cgs.aspectScale;
 
 		x = rect.x + ( rect.w / 2 ) - ( w / 2 );
@@ -585,7 +590,12 @@ public:
 //		if(cg.zoomed && cg.ironsight)
 //            w = h = wi->crossHairSize * cg_crosshairSize.value;
 //        else
-        w = h = cg.snap->ps.coneOfFire / 2.0;
+        w = h = cg.snap->ps.coneOfFire * 100.0;
+        if(w < 30.0)
+        {
+            w = 30.0;
+            h = 30.0;
+        }
         w *= cgs.aspectScale;
 
 		// HACK: This ignores the width/height of the rect (does it?)

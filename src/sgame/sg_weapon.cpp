@@ -533,6 +533,24 @@ static void FireLevel1Melee( gentity_t *self )
 	}
 }
 
+void CalcSpread(vec3_t end, float spread)
+{
+	float     r, u, spreadTan;
+    //r is the angle in which the spread deviates from the target
+	r = random() * M_PI * 2.0f;
+	//u = sin( r ) * crandom() * spread * 16;
+	spreadTan = tan(spread * M_PI / 180.0) * 8192 * 16;
+	u = sin(r) * crandom() * spreadTan;
+	r = cos(r) * crandom() * spreadTan;
+	//r = cos( r ) * crandom() * spread * 16;
+	//end = muzzle + 8192 * 16 * forward
+	VectorMA( muzzle, 8192 * 16, forward, end );
+	//end = end * r * right;
+	//end = end * u * up;
+	VectorMA( end, r, right, end );
+	VectorMA( end, u, up, end );
+}
+
 /*
 ======================================================================
 
@@ -547,15 +565,9 @@ static void FireBullet( gentity_t *self, float spread, int damage, int mod )
 
 	trace_t   tr;
 	vec3_t    end;
-	float     r, u;
 	gentity_t *target;
 
-	r = random() * M_PI * 2.0f;
-	u = sin( r ) * crandom() * spread * 16;
-	r = cos( r ) * crandom() * spread * 16;
-	VectorMA( muzzle, 8192 * 16, forward, end );
-	VectorMA( end, r, right, end );
-	VectorMA( end, u, up, end );
+	CalcSpread(end, spread);
 
 	// don't use unlagged if this is not a client (e.g. turret)
 	if ( self->client )
@@ -978,7 +990,7 @@ LAS GUN
 ======================================================================
 */
 
-static void FireLasgun( gentity_t *self )
+static void FireLasgun( gentity_t *self, float spread)
 {
 	// TODO: Merge this with other *Fire functions
 
@@ -986,7 +998,7 @@ static void FireLasgun( gentity_t *self )
 	vec3_t    end;
 	gentity_t *target;
 
-	VectorMA( muzzle, 8192 * 16, forward, end );
+	CalcSpread(end, spread);
 
 	G_UnlaggedOn( self, muzzle, 8192 * 16 );
 	trap_Trace( &tr, muzzle, nullptr, nullptr, end, self->s.number, MASK_SHOT, 0 );
@@ -1837,7 +1849,7 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_LAS_GUN:
-					FireLasgun( self );
+					FireLasgun( self, self->client->ps.coneOfFire );
 					break;
 
 				case WP_PAIN_SAW:
