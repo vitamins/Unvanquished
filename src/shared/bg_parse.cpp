@@ -1810,21 +1810,19 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		{
 			wa->usesRecoil = true;
             PARSE(text, token);
-            //recoil definitions are in angles for human readability but delta angles expects SHORT units
-            //better convert here than at every frame
             //negative angles go upwards.., avoid having to write negative values for recoil in the weapon configuration
-			wa->recoilVertical = -ANGLE2SHORT(atof( token ));
+			wa->recoilVertical = -atof( token );
 			PARSE(text, token);
-			wa->recoilHorizontalMin = ANGLE2SHORT(atof( token ));
+			wa->recoilHorizontalMin = atof( token );
 			PARSE(text, token);
-			wa->recoilHorizontalMax = ANGLE2SHORT(atof( token ));
+			wa->recoilHorizontalMax = atof( token );
 			PARSE(text, token);
-			wa->recoilHorizontalTolerance = ANGLE2SHORT(atof( token ));
+			wa->recoilHorizontalTolerance = atof( token );
 			PARSE(text, token);
 			wa->recoilFirstShotMultiplier = atof( token );
             PARSE(text, token);
             //convert decrease from per second to per milisecond
-			wa->recoilDecrease = ANGLE2SHORT(atof( token )) / 1000;
+			wa->recoilDecrease = atof( token ) / 1000;
             PARSE(text, token);
             //this one is interpreted as angle already
 			wa->recoilAngleMin = atof( token );

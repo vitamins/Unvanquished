@@ -2900,30 +2900,26 @@ Offset viewangles based on recoil and fade the recoil
 void BG_ApplyRecoil( playerState_t *ps, int dt)
 {
 	const weaponAttributes_t *wa;
-	float comp_vec[2];
-	float dtf;
-	float recoilDecrease;
 
 	wa = BG_Weapon( ps->weapon );
-
 	if( !wa || !wa->usesRecoil )
 		return;
-
-    recoilDecrease = wa->recoilDecrease;
 
     //TODO smooth out adding recoil
     if(ps->recoilVel[YAW])
     {
         //add recoil to the side
-        ps->delta_angles[ YAW ] += ps->recoilVel[YAW];
+        ps->delta_angles[ YAW ] += ANGLE2SHORT(ps->recoilVel[YAW]);
         ps->recoilAccum[YAW] += ps->recoilVel[YAW];
+        //printf("YAW   vel: %8f accum: %8f delta: %i\n\n", ps->recoilVel[YAW], ps->recoilAccum[YAW], ps->delta_angles[YAW]);
         ps->recoilVel[YAW] = 0.0;
     }
     if(ps->recoilVel[PITCH])
     {
         //add recoil upwards
-        ps->delta_angles[ PITCH ] += ps->recoilVel[PITCH];
+        ps->delta_angles[ PITCH ] += ANGLE2SHORT(ps->recoilVel[PITCH]);
         ps->recoilAccum[PITCH] += ps->recoilVel[PITCH];
+        //printf("PITCH vel: %8f accum: %8f delta: %i\n\n", ps->recoilVel[PITCH], ps->recoilAccum[PITCH], ps->delta_angles[PITCH]);
         ps->recoilVel[PITCH] = 0.0;
     }
     else if(ps->recoilWait > 0)
@@ -2937,14 +2933,14 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
         {
             //start automatic recoil compensation
             //check if the player has dragged the mouse downwards to compensate recoil
-            if( (ps->viewangles[PITCH] - SHORT2ANGLE(ps->recoilAccum[PITCH]) ) >= ps->recoilOrigin[PITCH])
+            if( (ps->viewangles[PITCH] - ps->recoilAccum[PITCH]) >= ps->recoilOrigin[PITCH])
             {
                 if(ps->viewangles[PITCH] <= ps->recoilOrigin[PITCH])
                     // we are still higher than first shot, go back to pitch angle of first shot
-                    ps->recoilAccum[PITCH] = -ANGLE2SHORT(ps->recoilOrigin[PITCH] - ps->viewangles[PITCH]);
+                    ps->recoilAccum[PITCH] = ps->viewangles[PITCH] - ps->recoilOrigin[PITCH];
                 else
                     //player has aimed below the first shot, do not compensate anything
-                    ps->recoilAccum[PITCH] = 0;
+                    ps->recoilAccum[PITCH] = 0.0;
             }
             //the "else" path here does nothing => compensate exactly the accumulated recoil
         ps->recoilWait = -1;
@@ -2952,9 +2948,13 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
     }
     if(ps->recoilWait < 0)
     {
+        float comp_vec[2];
+        float dtf;
+        float recoilDecrease;
+        recoilDecrease = wa->recoilDecrease;
         //move viewangle for recoil compensation
         //calculate compensation vector
-        // TODO only calculate it once and save comp_vec in player state
+        // TODO only calculate it once and save comp_vec in player state, but dont transmit any of this over network..
         // TODO use vector and normalize function
         // TODO make sure we hit the target precisely
         comp_vec[YAW] = (-1) * ps->recoilAccum[YAW];
@@ -2971,16 +2971,16 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
         if(ps->recoilAccum[PITCH] >= 0)
         {
             //we passed the origin, now move exactly to the origin
-            ps->delta_angles[PITCH] += comp_vec[PITCH] * dtf - ps->recoilAccum[PITCH];
-            ps->delta_angles[YAW] += comp_vec[YAW] * dtf - ps->recoilAccum[YAW];
+            ps->delta_angles[PITCH] += ANGLE2SHORT(comp_vec[PITCH] * dtf - ps->recoilAccum[PITCH]);
+            ps->delta_angles[YAW] += ANGLE2SHORT(comp_vec[YAW] * dtf - ps->recoilAccum[YAW]);
             ps->recoilAccum[PITCH] = 0;
             ps->recoilAccum[YAW] = 0;
             ps->recoilWait = 0;
         }
         else
         {
-            ps->delta_angles[YAW] += comp_vec[YAW] * dtf;
-            ps->delta_angles[PITCH] += comp_vec[PITCH] * dtf;
+            ps->delta_angles[YAW] += ANGLE2SHORT(comp_vec[YAW] * dtf);
+            ps->delta_angles[PITCH] += ANGLE2SHORT(comp_vec[PITCH] * dtf);
         }
     }
 }

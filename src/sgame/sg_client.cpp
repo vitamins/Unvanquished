@@ -1932,6 +1932,13 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
 	// (re)tag the client for its team
 	Beacon::DeleteTags( ent );
 	Beacon::Tag( ent, (team_t)ent->client->ps.persistant[ PERS_TEAM ], true );
+
+	// initialize recoil
+	client->ps.recoilVel[YAW] = 0.0;
+	client->ps.recoilVel[PITCH] = 0.0;
+    client->ps.recoilAccum[YAW] = 0.0;
+    client->ps.recoilAccum[PITCH] = 0.0;
+    client->ps.recoilWait = 0;
 }
 
 /*
