@@ -4249,6 +4249,21 @@ static void PM_Weapon()
                 return;
         }
     }
+    // n-times burst weapon, same as semi-auto but always fires n shots in a row
+    else if ( BG_Weapon( pm->ps->weapon)->burst )
+    {
+        if(!attack1)
+        {
+            if(pm->ps->burstCount)
+                attack1 = true;
+            pm->ps->releasedFireButton = true;
+        }
+        else
+        {
+            if(!pm->ps->burstCount && !pm->ps->releasedFireButton)
+                return;
+        }
+    }
 
 	// no slash during charge
 	if ( pm->ps->stats[ STAT_STATE ] & SS_CHARGING )
@@ -4711,7 +4726,21 @@ static void PM_Weapon()
 	}
 
 	// for semi auto weapons
-	pm->ps->releasedFireButton = false;
+	if ( BG_Weapon( pm->ps->weapon)->semi )
+        pm->ps->releasedFireButton = false;
+	// for burst weapons
+	else if ( BG_Weapon( pm->ps->weapon)->burst )
+    {
+        if( pm->ps->burstCount > 1)
+            pm->ps->burstCount --;
+        else if (pm->ps->burstCount == 1)
+            pm->ps->burstCount = 0;
+        else if (pm->ps->burstCount == 0)
+        {
+            pm->ps->releasedFireButton = false;
+            pm->ps->burstCount = BG_Weapon( pm->ps->weapon)->burst - 1;
+        }
+    }
 
 	pm->ps->weaponTime += addTime;
 }

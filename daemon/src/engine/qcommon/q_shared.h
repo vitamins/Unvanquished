@@ -1980,6 +1980,8 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 
         // for semi auto weapons
 		bool releasedFireButton;
+		// for burst weapons
+		int burstCount;
 
 		vec2_t recoilVel;
 		vec2_t recoilOrigin;

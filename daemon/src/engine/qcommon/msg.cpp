@@ -1462,6 +1462,8 @@ static netField_t playerStateFields[] =
 	,
     { PSF( releasedFireButton ),   0              , 0 }
 	,
+    { PSF( burstCount ),           0              , 0 }
+	,
 	{ PSF( recoilVel[ 0 ] ),       0              , 0 }
 	,
 	{ PSF( recoilVel[ 1 ] ),       0              , 0 }

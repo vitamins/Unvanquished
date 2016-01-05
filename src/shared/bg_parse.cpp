@@ -1810,6 +1810,11 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 		{
             wa->semi = true;
 		}
+        else if ( !Q_stricmp( token, "burst" ) )
+		{
+            PARSE(text, token);
+			wa->burst = atoi( token );
+		}
 		else if ( !Q_stricmp( token, "recoil" ) )
 		{
 			wa->usesRecoil = true;
