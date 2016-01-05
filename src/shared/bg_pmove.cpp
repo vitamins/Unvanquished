@@ -4547,8 +4547,8 @@ static void PM_Weapon()
 			case WP_ALEVEL0:
 				pm->ps->generic1 = WPM_PRIMARY;
 				PM_AddEvent( EV_FIRE_WEAPON );
-				PM_AddRecoil(fullAuto);
-                PM_AddBloomPerShot();
+				//PM_AddRecoil(fullAuto);
+                //PM_AddBloomPerShot();
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate1;
 				break;
 
@@ -4556,8 +4556,8 @@ static void PM_Weapon()
 			case WP_ALEVEL3_UPG:
 				pm->ps->generic1 = WPM_SECONDARY;
 				PM_AddEvent( EV_FIRE_WEAPON2 );
-				PM_AddRecoil(fullAuto);
-                PM_AddBloomPerShot();
+				//PM_AddRecoil(fullAuto);
+                //PM_AddBloomPerShot();
 				addTime = BG_Weapon( pm->ps->weapon )->repeatRate2;
 				break;
 
