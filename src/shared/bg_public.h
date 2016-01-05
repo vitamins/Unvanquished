@@ -1270,6 +1270,7 @@ typedef struct
 	bool longRanged;
 
 	team_t   team;
+	bool semi;
     bool usesRecoil;
     float recoilVertical;
 	float recoilHorizontalMin;

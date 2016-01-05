@@ -881,7 +881,7 @@ BLASTER PISTOL
 ======================================================================
 */
 
-static void FireBlaster( gentity_t *self )
+static void FireBlaster( gentity_t *self, float spread )
 {
 	G_SpawnMissile( MIS_BLASTER, self, muzzle, forward, nullptr, G_ExplodeMissile, level.time + 10000 );
 }
@@ -1817,7 +1817,7 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_BLASTER:
-					FireBlaster( self );
+					FireBlaster( self, self->client->ps.coneOfFire );
 					break;
 
 				case WP_MACHINEGUN:

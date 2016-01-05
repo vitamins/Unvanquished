@@ -4238,6 +4238,18 @@ static void PM_Weapon()
 		pm->ps->weaponTime = 0;
 	}
 
+    // semi-auto weapons
+	if ( BG_Weapon( pm->ps->weapon )->semi )
+	{
+        if(!attack1)
+            pm->ps->releasedFireButton = true;
+        else
+        {
+            if(!pm->ps->releasedFireButton)
+                return;
+        }
+    }
+
 	// no slash during charge
 	if ( pm->ps->stats[ STAT_STATE ] & SS_CHARGING )
 	{
@@ -4697,6 +4709,10 @@ static void PM_Weapon()
 			pm->ps->ammo = 0;
 		}
 	}
+
+	// for semi auto weapons
+	pm->ps->releasedFireButton = false;
+
 	pm->ps->weaponTime += addTime;
 }
 

@@ -1806,6 +1806,10 @@ void BG_ParseWeaponAttributeFile( const char *filename, weaponAttributes_t *wa )
 			wa->unlockThreshold = atoi(token);
 			defined |= UNLOCKTHRESHOLD;
 		}
+        else if ( !Q_stricmp( token, "semi" ) )
+		{
+            wa->semi = true;
+		}
 		else if ( !Q_stricmp( token, "recoil" ) )
 		{
 			wa->usesRecoil = true;

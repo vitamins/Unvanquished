@@ -1939,6 +1939,7 @@ void ClientSpawn( gentity_t *ent, gentity_t *spawn, const vec3_t origin, const v
     client->ps.recoilAccum[YAW] = 0.0;
     client->ps.recoilAccum[PITCH] = 0.0;
     client->ps.recoilWait = 0;
+    client->ps.releasedFireButton = false;
 }
 
 /*

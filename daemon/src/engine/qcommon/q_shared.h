@@ -1978,6 +1978,9 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		int damagePitch;
 		int damageCount;
 
+        // for semi auto weapons
+		bool releasedFireButton;
+
 		vec2_t recoilVel;
 		vec2_t recoilOrigin;
 		vec2_t recoilAccum;
