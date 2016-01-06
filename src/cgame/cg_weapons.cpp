@@ -1385,7 +1385,7 @@ static void CG_CalculateWeaponPosition( vec3_t out_origin, vec3_t out_angles )
 		scaleX = -2e-3,
 		limitY = 1.5f,
 		scaleY = 2e-3;
-	Vec3 origin, angles, right, up;
+	Vec3 origin, angles, right, up, forward;
 	float        scale;
 	//weaponInfo_t *weapon = cg_weapons + cg.predictedPlayerState.weapon;
 	Filter<WeaponOffsets> &filter = cg.weaponOffsetsFilter;
@@ -1395,12 +1395,16 @@ static void CG_CalculateWeaponPosition( vec3_t out_origin, vec3_t out_angles )
 	angles = Vec3::Load( cg.refdefViewAngles );
 	right = Vec3::Load( cg.refdef.viewaxis[ 1 ] );
 	up = Vec3::Load( cg.refdef.viewaxis[ 2 ] );
+	forward = Vec3::Load( cg.refdef.viewaxis[ 3 ] );
 
 
     if(cg.zoomed && cg.ironsight)
 	{
+        //origin += up * 2.8;
+        //origin += right * 3.3;
         origin += up * 2.8;
-        origin += right * 3.3;
+        origin += right *3.3;
+        origin += forward * (-2.7);
         //angles[YAW] += 1.0;
 	}
 	else

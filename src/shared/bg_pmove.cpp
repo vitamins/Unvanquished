@@ -3901,6 +3901,7 @@ static void PM_TorsoAnimation()
 
 void PM_AddBloomPerShot()
 {
+    //TODO BUG this happens before the shot is fired, actually, because shots are handled as events by server
 		//cone of fire increase from firing a shot
 		if(BG_Weapon( pm->ps->weapon )->canZoom && usercmdButtonPressed( pm->cmd.buttons, BUTTON_ATTACK2 ) )
             pm->ps->coneOfFire += BG_Weapon( pm->ps->weapon )->bloomPerShotAim;

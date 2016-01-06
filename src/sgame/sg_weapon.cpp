@@ -535,6 +535,11 @@ static void FireLevel1Melee( gentity_t *self )
 
 void CalcSpread(vec3_t end, float spread)
 {
+    if(!spread)
+    {
+        VectorMA( muzzle, 8192 * 16, forward, end );
+        return;
+    }
 	float     r, u, spreadTan;
     //r is the angle in which the spread deviates from the target
 	r = random() * M_PI * 2.0f;
@@ -558,6 +563,18 @@ MACHINEGUN
 
 ======================================================================
 */
+
+
+//float CalcDamageFalloff(int maxDamage, int minDamage, float maxRange, float minRange, float distance)
+//{
+//    if( distance <= maxRange )
+//        return maxDamage;
+//    else if(distance < minRange )
+//        // linear falloff from maxDamage to minDamage
+//        return (minDamage + (distance - maxRange) * (maxDamage - minDamage) / (minRange - maxRange) );
+//    else
+//        return minDamage;
+//}
 
 static void FireBullet( gentity_t *self, float spread, int damage, int mod )
 {
@@ -668,7 +685,7 @@ MASS DRIVER
 ======================================================================
 */
 
-static void FireMassdriver( gentity_t *self )
+static void FireMassdriver( gentity_t *self, float spread )
 {
 	// TODO: Merge this with other *Fire functions
 
@@ -676,7 +693,8 @@ static void FireMassdriver( gentity_t *self )
 	vec3_t    end;
 	gentity_t *target;
 
-	VectorMA( muzzle, 8192.0f * 16.0f, forward, end );
+	CalcSpread(end, spread);
+
 
 	G_UnlaggedOn( self, muzzle, 8192.0f * 16.0f );
 	trap_Trace( &tr, muzzle, nullptr, nullptr, end, self->s.number, MASK_SHOT, 0 );
@@ -883,6 +901,7 @@ BLASTER PISTOL
 
 static void FireBlaster( gentity_t *self, float spread )
 {
+    //TODO adding spread here requires a different logic than for FireBullet
 	G_SpawnMissile( MIS_BLASTER, self, muzzle, forward, nullptr, G_ExplodeMissile, level.time + 10000 );
 }
 
@@ -1841,7 +1860,7 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_MASS_DRIVER:
-					FireMassdriver( self );
+					FireMassdriver( self, self->client->ps.coneOfFire );
 					break;
 
 				case WP_LUCIFER_CANNON:

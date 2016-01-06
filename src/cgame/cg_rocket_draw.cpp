@@ -411,7 +411,7 @@ private:
 
 };
 
-#define CROSSHAIR_INDICATOR_HITFADE 500
+#define CROSSHAIR_INDICATOR_HITFADE 200
 
 class CrosshairIndicatorHudElement : public HudElement
 {
@@ -506,21 +506,15 @@ public:
 		}
 
 		// set size
-//		w = h = wi->crossHairSize * cg_crosshairSize.value;
-//		w *= cgs.aspectScale;
-        w = h = cg.snap->ps.coneOfFire * 100.0;
-        if(w < 30.0)
-        {
-            w = 30.0;
-            h = 30.0;
-        }
+		w = h = wi->crossHairSize * cg_crosshairSize.value;
         w *= cgs.aspectScale;
 
-		x = rect.x + ( rect.w / 2 ) - ( w / 2 );
+        //calculate center
+        x = rect.x + ( rect.w / 2 ) - ( w / 2 );
 		y = rect.y + ( rect.h / 2 ) - ( h / 2 );
 
-		// draw
-		trap_R_SetColor( drawColor );
+        //draw
+		trap_R_SetColor( Color::Red );
 		CG_DrawPic( x, y, w, h, indicator );
 		trap_R_ClearColor();
 	}
@@ -549,7 +543,7 @@ public:
 	void DoOnRender()
 	{
 		rectDef_t    rect;
-		float        w, h;
+		float        w, h, cx, cy;
 		qhandle_t    crosshair;
 		float        x, y;
 		weaponInfo_t *wi;
@@ -587,30 +581,26 @@ public:
 
 		wi = &cg_weapons[ weapon ];
 
-//		if(cg.zoomed && cg.ironsight)
-//            w = h = wi->crossHairSize * cg_crosshairSize.value;
-//        else
-        w = h = cg.snap->ps.coneOfFire * 100.0;
-        if(w < 30.0)
-        {
-            w = 30.0;
-            h = 30.0;
-        }
+        w = h = cg.snap->ps.coneOfFire * 10.0;
         w *= cgs.aspectScale;
 
-		// HACK: This ignores the width/height of the rect (does it?)
-		x = rect.x + ( rect.w / 2 ) - ( w / 2 );
-		y = rect.y + ( rect.h / 2 ) - ( h / 2 );
+        cx = rect.x + ( rect.w / 2 );
+		cy = rect.y + ( rect.h / 2 );
 
-		crosshair = wi->crossHair;
+        #define CHsmall 1.0
+        #define CHbig 10.0
 
-		if ( crosshair )
-		{
-			CG_GetRocketElementColor( color );
-			trap_R_SetColor( color );
-			CG_DrawPic( x, y, w, h, crosshair );
-			trap_R_ClearColor();
-		}
+		// draw
+        float scaledbig = CHbig * cgs.aspectScale;
+        float scaledsmall = CHsmall * cgs.aspectScale;
+        //vertical, upper
+        CG_FillRect( cx - CHsmall / 2.0, cy - h - CHbig, scaledsmall, CHbig, color );
+        //vertical lower
+        CG_FillRect( cx - CHsmall / 2.0, cy + h, scaledsmall, CHbig, color );
+        //horizontal, right
+        CG_FillRect( cx + w * cgs.aspectScale, cy - CHsmall / 2.0, scaledbig, CHsmall, color );
+        //horizontal, left
+        CG_FillRect( cx - (w + CHbig) * cgs.aspectScale - 0.5, cy - CHsmall / 2.0, scaledbig, CHsmall, color );
 	}
 
 private:
