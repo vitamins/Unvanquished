@@ -2939,48 +2939,43 @@ void BG_ApplyRecoil( playerState_t *ps, int dt)
                     // we are still higher than first shot, go back to pitch angle of first shot
                     ps->recoilAccum[PITCH] = ps->viewangles[PITCH] - ps->recoilOrigin[PITCH];
                 else
-                    //player has aimed below the first shot, do not compensate anything
+                    //player has aimed below the first shot, do not compensate vertically
                     ps->recoilAccum[PITCH] = 0.0;
             }
             //the "else" path here does nothing => compensate exactly the accumulated recoil
         ps->recoilWait = -1;
+        float recoilDecrease, compVec[2];
+        recoilDecrease = wa->recoilDecrease;
+        // TODO use vector and normalize function
+        compVec[YAW] = (-1) * ps->recoilAccum[YAW];
+        compVec[PITCH] = (-1) * ps->recoilAccum[PITCH];
+        float len = sqrt(compVec[YAW] * compVec[YAW] + compVec[PITCH] * compVec[PITCH]);
+        ps->recoilCompVec[YAW] = compVec[YAW] * recoilDecrease / len;
+        ps->recoilCompVec[PITCH] = compVec[PITCH] * recoilDecrease / len;
         }
     }
     if(ps->recoilWait < 0)
     {
-        float comp_vec[2];
         float dtf;
-        float recoilDecrease;
-        recoilDecrease = wa->recoilDecrease;
         //move viewangle for recoil compensation
-        //calculate compensation vector
-        // TODO only calculate it once and save comp_vec in player state, but dont transmit any of this over network..
-        // TODO use vector and normalize function
-        // TODO make sure we hit the target precisely
-        comp_vec[YAW] = (-1) * ps->recoilAccum[YAW];
-        comp_vec[PITCH] = (-1) * ps->recoilAccum[PITCH];
-        float len = sqrt(comp_vec[YAW] * comp_vec[YAW] + comp_vec[PITCH] * comp_vec[PITCH]);
-        comp_vec[YAW] /= len;
-        comp_vec[PITCH] /= len;
-        comp_vec[YAW] *= recoilDecrease;
-        comp_vec[PITCH] *= recoilDecrease;
+        // TODO make sure we hit the target precisely (not sure if this is possible due to ANGLE2SHORT)
         dtf = (float) dt;
         //compensate recoil
-        ps->recoilAccum[YAW] += comp_vec[YAW] * dtf;
-        ps->recoilAccum[PITCH] += comp_vec[PITCH] * dtf;
+        ps->recoilAccum[YAW] += ps->recoilCompVec[YAW] * dtf;
+        ps->recoilAccum[PITCH] += ps->recoilCompVec[PITCH] * dtf;
         if(ps->recoilAccum[PITCH] >= 0)
         {
             //we passed the origin, now move exactly to the origin
-            ps->delta_angles[PITCH] += ANGLE2SHORT(comp_vec[PITCH] * dtf - ps->recoilAccum[PITCH]);
-            ps->delta_angles[YAW] += ANGLE2SHORT(comp_vec[YAW] * dtf - ps->recoilAccum[YAW]);
+            ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilCompVec[PITCH] * dtf - ps->recoilAccum[PITCH]);
+            ps->delta_angles[YAW] += ANGLE2SHORT(ps->recoilCompVec[YAW] * dtf - ps->recoilAccum[YAW]);
             ps->recoilAccum[PITCH] = 0;
             ps->recoilAccum[YAW] = 0;
             ps->recoilWait = 0;
         }
         else
         {
-            ps->delta_angles[YAW] += ANGLE2SHORT(comp_vec[YAW] * dtf);
-            ps->delta_angles[PITCH] += ANGLE2SHORT(comp_vec[PITCH] * dtf);
+            ps->delta_angles[YAW] += ANGLE2SHORT(ps->recoilCompVec[YAW] * dtf);
+            ps->delta_angles[PITCH] += ANGLE2SHORT(ps->recoilCompVec[PITCH] * dtf);
         }
     }
 }

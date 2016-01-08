@@ -1967,6 +1967,7 @@ typedef std::array<std::string, MAX_CONFIGSTRINGS> GameStateCSs;
 		vec2_t recoilVel;
 		vec2_t recoilOrigin;
 		vec2_t recoilAccum;
+		vec2_t recoilCompVec;
 		int recoilWait;
 		float coneOfFire;
 

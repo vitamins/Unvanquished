@@ -901,7 +901,7 @@ BLASTER PISTOL
 
 static void FireBlaster( gentity_t *self, float spread )
 {
-    //TODO adding spread here requires a different logic than for FireBullet
+    //TODO adding spread  to the "forward" vector here requires a different logic than for FireBullet
 	G_SpawnMissile( MIS_BLASTER, self, muzzle, forward, nullptr, G_ExplodeMissile, level.time + 10000 );
 }
 
@@ -1848,7 +1848,7 @@ void G_FireWeapon( gentity_t *self, weapon_t weapon, weaponMode_t weaponMode )
 					break;
 
 				case WP_CHAINGUN:
-					FireBullet( self, CHAINGUN_SPREAD, CHAINGUN_DMG, MOD_CHAINGUN );
+					FireBullet( self, self->client->ps.coneOfFire, CHAINGUN_DMG, MOD_CHAINGUN );
 					break;
 
 				case WP_FLAMER:

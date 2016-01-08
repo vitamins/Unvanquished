@@ -5371,10 +5371,10 @@ void PmoveSingle( pmove_t *pmove )
 
 	PM_SetWaterLevel();
 
+    PM_SetConeOfFire(pml.msec);
+
 	// weapons
 	PM_Weapon();
-
-	PM_SetConeOfFire(pml.msec);
 
 	// apply recoil added by PM_AddRecoil
 	// server has to do it _after_ firing so it can't be here

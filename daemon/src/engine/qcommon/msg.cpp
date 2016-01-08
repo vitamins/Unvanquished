@@ -1468,6 +1468,10 @@ static netField_t playerStateFields[] =
 	,
 	{ PSF( recoilVel[ 1 ] ),       0              , 0 }
 	,
+    { PSF( recoilCompVec[ 0 ] ),       0              , 0 }
+	,
+	{ PSF( recoilCompVec[ 1 ] ),       0              , 0 }
+	,
 	{ PSF( recoilOrigin[0] ),      0              , 0 }
 	,
     { PSF( recoilOrigin[1] ),      0              , 0 }
